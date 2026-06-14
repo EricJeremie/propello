@@ -446,14 +446,15 @@ async function handleAuth(e) {
   const isSignUp = authMode === 'signup';
 
   try {
-    const { error } = isSignUp
+    const { data, error } = isSignUp
       ? await signUp(email, password)
       : await signIn(email, password);
 
     if (error) {
       showToast(error.message, 'error');
     } else {
-      showToast(isSignUp ? 'Check your email to confirm sign up!' : 'Welcome back!', 'success');
+      const signedIn = !isSignUp || (data && data.session);
+      showToast(signedIn ? 'Welcome!' : 'Check your email to confirm sign up!', 'success');
       hideAuthModal();
       updateAuthState();
     }
