@@ -5,17 +5,16 @@
    ============================================================ */
 'use strict';
 
+import { supabase, getSession, saveProposal, fetchUserProposals } from './supabase.js';
+
 /* ---------- Constants ---------- */
 const MODEL = 'claude-opus-4-8';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 const LS_KEY = 'pdv_api_key';
-const LS_DRAFT = 'pdv_last_draft';
 const LS_LOGO = 'pdv_logo';
 const DEFAULT_LOGO = 'assets/logo.svg';
 
-/* House-style exemplar distilled from the reference PocketDevs quotation,
-   so generated tone/structure matches existing proposals. */
 const STYLE_EXEMPLAR = `
 PocketDevs proposals read like this reference (AI-Assisted Development Training & Consultation for Elgada BPO):
 - Tone: confident, precise, commercially clear; no fluff, no hype. Short declarative sentences.
@@ -48,7 +47,7 @@ Rules:
   change requests, IP & internal-use license, warranty/support boundary, and validity of the quotation.
 - Write in PocketDevs' house voice.
 
-${STYLE_EXEMPLAR}
+\${STYLE_EXEMPLAR}
 
 Return only the structured proposal. Do not include commentary outside the JSON.`;
 
@@ -124,7 +123,7 @@ const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
 const paras = (s) => String(s || '').split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
-  .map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
+  .map((p) => `<p>\${esc(p).replace(/\n/g, '<br>')}</p>`).join('');
 
 /* ---------- State ---------- */
 let pdfBase64 = null;
@@ -135,8 +134,20 @@ function setStatus(kind, html) {
   const el = $('status');
   if (!html) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
-  el.className = 'status' + (kind ? ` status--${kind}` : '');
+  el.className = 'status' + (kind ? \` status--\${kind}\` : '');
   el.innerHTML = html;
+}
+
+function showToast(msg, kind = 'info') {
+  const toast = document.createElement('div');
+  toast.className = \`toast toast--\${kind}\`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('toast--visible'), 10);
+  setTimeout(() => {
+    toast.classList.remove('toast--visible');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 /* ---------- Branding (logo) ---------- */
@@ -168,7 +179,7 @@ function initKey() {
 /* ---------- File handling ---------- */
 function handleFile(file) {
   if (!file) return;
-  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+  if (file.type !== 'application/pdf' && !/\\.pdf$/i.test(file.name)) {
     setStatus('error', 'Please choose a PDF file.');
     return;
   }
@@ -178,7 +189,7 @@ function handleFile(file) {
     pdfName = file.name;
     const dz = $('dropzone');
     dz.classList.add('has-file');
-    $('fileName').textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+    $('fileName').textContent = \`\${file.name} · \${(file.size / 1024).toFixed(0)} KB\`;
     setStatus('', '');
   };
   reader.onerror = () => setStatus('error', 'Could not read that file.');
@@ -187,7 +198,7 @@ function handleFile(file) {
 
 function handleLogo(file) {
   if (!file) return;
-  if (!/^image\//.test(file.type)) { setStatus('error', 'Please choose an image file (PNG, SVG, JPG, or WebP).'); return; }
+  if (!/^image\\//.test(file.type)) { setStatus('error', 'Please choose an image file (PNG, SVG, JPG, or WebP).'); return; }
   if (file.size > 1.5 * 1024 * 1024) { setStatus('error', 'That logo is over 1.5 MB — please use a smaller file.'); return; }
   const reader = new FileReader();
   reader.onload = () => { localStorage.setItem(LS_LOGO, String(reader.result)); applyLogo(); setStatus('ok', 'Logo updated — it now appears on every proposal.'); };
@@ -220,6 +231,12 @@ function collectIntake() {
 
 /* ---------- Generate ---------- */
 async function generate() {
+  const session = await getSession();
+  if (!session) {
+    showAuthModal();
+    return;
+  }
+
   const key = localStorage.getItem(LS_KEY) || $('apiKey').value.trim();
   if (!key) {
     $('settingsPanel').hidden = false;
@@ -239,8 +256,8 @@ async function generate() {
 
   const userText =
     'Draft a PocketDevs proposal' + (pdfBase64 ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
-    '\nUse ONLY these confirmed values for hard facts; output "[TBD]" for anything missing.\n\n' +
-    'CONFIRMED DETAILS (JSON):\n' + JSON.stringify({
+    '\\nUse ONLY these confirmed values for hard facts; output "[TBD]" for anything missing.\\n\\n' +
+    'CONFIRMED DETAILS (JSON):\\n' + JSON.stringify({
       clientCompany: intake.company || null,
       projectTitle: intake.title || null,
       clientContactName: intake.contactName || null,
@@ -258,9 +275,9 @@ async function generate() {
       budget: intake.budget || null,
       paymentDetails: intake.paymentDetails || null,
     }, null, 2) +
-    (intake.notes ? '\n\nEXTRA INSTRUCTIONS:\n' + intake.notes : '') +
-    `\n\nFORMATTING: Write every monetary amount with the "${intake.currencySymbol || intake.currency}" symbol (currency ${intake.currency}), e.g. "${intake.currencySymbol || ''}120,000". Use ${intake.locale} conventions for dates and number grouping.` +
-    '\n\nReturn the full structured proposal.';
+    (intake.notes ? '\\n\\nEXTRA INSTRUCTIONS:\\n' + intake.notes : '') +
+    \`\\n\\nFORMATTING: Write every monetary amount with the "\${intake.currencySymbol || intake.currency}" symbol (currency \${intake.currency}), e.g. "\${intake.currencySymbol || ''}120,000". Use \${intake.locale} conventions for dates and number grouping.\` +
+    '\\n\\nReturn the full structured proposal.';
 
   const content = [];
   if (pdfBase64) {
@@ -291,13 +308,9 @@ async function generate() {
     const data = await res.json();
 
     if (!res.ok) {
-      const msg = data && data.error ? data.error.message : `HTTP ${res.status}`;
+      const msg = data && data.error ? data.error.message : \`HTTP \${res.status}\`;
       if (res.status === 401) { $('settingsPanel').hidden = false; }
-      setStatus('error', `Generation failed: ${esc(msg)}`);
-      return;
-    }
-    if (data.stop_reason === 'refusal') {
-      setStatus('error', 'Claude declined this request. Try a different source document.');
+      setStatus('error', \`Generation failed: \${esc(msg)}\`);
       return;
     }
 
@@ -306,14 +319,14 @@ async function generate() {
 
     let proposal;
     try { proposal = JSON.parse(block.text); }
-    catch (e) { setStatus('error', 'Response was not valid JSON' + (data.stop_reason === 'max_tokens' ? ' (output was truncated — try fewer details).' : '.')); return; }
+    catch (e) { setStatus('error', 'Response was not valid JSON.'); return; }
 
     render(proposal);
-    saveDraft(proposal);
-    const trunc = data.stop_reason === 'max_tokens' ? ' (note: output hit the length cap — review the end).' : '';
-    setStatus('ok', `Proposal generated${trunc} Click any text to edit, then <b>Download PDF</b>.`);
+    await saveProposal(proposal);
+    refreshHistory();
+    setStatus('ok', \`Proposal generated. Click any text to edit, then <b>Download PDF</b>.\`);
   } catch (err) {
-    setStatus('error', `Network error: ${esc(err.message)}. If this persists, your key or connection may be blocked.`);
+    setStatus('error', \`Network error: \${esc(err.message)}.\`);
   } finally {
     btn.disabled = false;
   }
@@ -321,100 +334,86 @@ async function generate() {
 
 /* ---------- Render ---------- */
 function sectionHead(n, title) {
-  return `<div class="p-section__head"><span class="p-section__num">${String(n).padStart(2, '0')}</span>` +
-    `<h2 class="p-section__title">${esc(title)}</h2></div>`;
+  return \`<div class="p-section__head"><span class="p-section__num">\${String(n).padStart(2, '0')}</span>\` +
+    \`<h2 class="p-section__title">\${esc(title)}</h2></div>\`;
 }
 function list(items, mod) {
   if (!items || !items.length) return '';
-  return `<ul class="p-list${mod ? ' ' + mod : ''}">${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>`;
+  return \`<ul class="p-list\${mod ? ' ' + mod : ''}">\${items.map((i) => \`<li>\${esc(i)}</li>\`).join('')}</ul>\`;
 }
 
 function render(d) {
   const m = d.meta || {}, c = d.client || {}, pb = d.preparedBy || {};
-  const cur = m.currency || 'PHP';
-
-  const cover = `
+  const cover = \`
     <header class="p-cover">
       <div class="p-cover__top">
-        <img src="${esc(currentLogo())}" alt="Logo" class="p-cover__logo js-logo" />
+        <img src="\${esc(currentLogo())}" alt="Logo" class="p-cover__logo js-logo" />
         <div class="p-eyebrow">
-          <div class="js-doc-no"><b>${esc(m.documentNumber || '[TBD]')}</b></div>
-          <div>Prepared ${esc(m.preparedDate || '[TBD]')}</div>
-          ${m.validUntil ? `<div>Valid until ${esc(m.validUntil)}</div>` : ''}
+          <div class="js-doc-no"><b>\${esc(m.documentNumber || '[TBD]')}</b></div>
+          <div>Prepared \${esc(m.preparedDate || '[TBD]')}</div>
+          \${m.validUntil ? \`<div>Valid until \${esc(m.validUntil)}</div>\` : ''}
         </div>
       </div>
       <span class="p-kicker">Proposal</span>
-      <h1 class="p-title">${esc(m.title || 'Project Proposal')}</h1>
+      <h1 class="p-title">\${esc(m.title || 'Project Proposal')}</h1>
       <div class="p-parties">
         <div class="p-party">
           <div class="p-party__label">Prepared for</div>
-          <div class="p-party__name">${esc(c.company || '[TBD]')}</div>
-          ${c.contactName ? `<div class="p-party__meta">${esc(c.contactName)}${c.contactTitle ? ' · ' + esc(c.contactTitle) : ''}</div>` : ''}
+          <div class="p-party__name">\${esc(c.company || '[TBD]')}</div>
+          \${c.contactName ? \`<div class="p-party__meta">\${esc(c.contactName)}\${c.contactTitle ? ' · ' + esc(c.contactTitle) : ''}</div>\` : ''}
         </div>
         <div class="p-party">
           <div class="p-party__label">Prepared by</div>
-          <div class="p-party__name">${esc(pb.company || 'PocketDevs')}</div>
-          <div class="p-party__meta">${esc(pb.name || '')}${pb.title ? ' · ' + esc(pb.title) : ''}</div>
+          <div class="p-party__name">\${esc(pb.company || 'PocketDevs')}</div>
+          <div class="p-party__meta">\${esc(pb.name || '')}\${pb.title ? ' · ' + esc(pb.title) : ''}</div>
         </div>
       </div>
-    </header>`;
+    </header>\`;
 
   const sec = [];
-
-  sec.push(`<section class="p-section">${sectionHead(1, 'Executive Summary')}<div class="p-lede">${paras(d.executiveSummary)}</div></section>`);
-
+  sec.push(\`<section class="p-section">\${sectionHead(1, 'Executive Summary')}<div class="p-lede">\${paras(d.executiveSummary)}</div></section>\`);
   const so = d.solutionsOutline || {};
-  sec.push(`<section class="p-section">${sectionHead(2, 'Solutions Outline')}${paras(so.summary)}${list(so.points)}</section>`);
-
-  sec.push(`<section class="p-section">${sectionHead(3, 'Objectives')}${list(d.objectives)}</section>`);
-
-  const scope = (d.scopeOfWork || []).map((g) => `
+  sec.push(\`<section class="p-section">\${sectionHead(2, 'Solutions Outline')}\${paras(so.summary)}\${list(so.points)}</section>\`);
+  sec.push(\`<section class="p-section">\${sectionHead(3, 'Objectives')}\${list(d.objectives)}</section>\`);
+  const scope = (d.scopeOfWork || []).map((g) => \`
     <div class="p-scope__group">
-      <div class="p-scope__phase">${esc(g.phase)}</div>
-      ${list(g.deliverables, 'p-list--check')}
-    </div>`).join('');
-  sec.push(`<section class="p-section">${sectionHead(4, 'Full Scope of Work')}<div class="p-scope">${scope}</div></section>`);
-
-  const tl = (d.timeline || []).map((r) => `<tr><td>${esc(r.phase)}</td><td>${esc(r.duration)}</td><td>${esc(r.milestone)}</td></tr>`).join('');
-  sec.push(`<section class="p-section">${sectionHead(5, 'Project Timeline')}
-    <table class="p-table"><thead><tr><th>Phase</th><th>Duration</th><th>Key milestone</th></tr></thead><tbody>${tl}</tbody></table></section>`);
-
+      <div class="p-scope__phase">\${esc(g.phase)}</div>
+      \${list(g.deliverables, 'p-list--check')}
+    </div>\`).join('');
+  sec.push(\`<section class="p-section">\${sectionHead(4, 'Full Scope of Work')}<div class="p-scope">\${scope}</div></section>\`);
+  const tl = (d.timeline || []).map((r) => \`<tr><td>\${esc(r.phase)}</td><td>\${esc(r.duration)}</td><td>\${esc(r.milestone)}</td></tr>\`).join('');
+  sec.push(\`<section class="p-section">\${sectionHead(5, 'Project Timeline')}
+    <table class="p-table"><thead><tr><th>Phase</th><th>Duration</th><th>Key milestone</th></tr></thead><tbody>\${tl}</tbody></table></section>\`);
   const cost = d.cost || {};
-  const ci = (cost.lineItems || []).map((r) => `<tr><td>${esc(r.item)}</td><td>${esc(r.basis)}</td><td class="num">${esc(r.amount)}</td></tr>`).join('');
+  const ci = (cost.lineItems || []).map((r) => \`<tr><td>\${esc(r.item)}</td><td>\${esc(r.basis)}</td><td class="num">\${esc(r.amount)}</td></tr>\`).join('');
   if (d.meta.budget) {
-    sec.push(`<section class="p-section">${sectionHead(6, 'Project Cost')}<div class="p-lede"><p><strong>Proposed Budget:</strong> ${esc(d.meta.budget)}</p></div></section>`);
+    sec.push(\`<section class="p-section">\${sectionHead(6, 'Project Cost')}<div class="p-lede"><p><strong>Proposed Budget:</strong> \${esc(d.meta.budget)}</p></div></section>\`);
   } else {
-    sec.push(`<section class="p-section">${sectionHead(6, 'Project Cost')}
+    sec.push(\`<section class="p-section">\${sectionHead(6, 'Project Cost')}
     <table class="p-table"><thead><tr><th>Line item</th><th>Basis</th><th class="num">Amount</th></tr></thead>
-    <tbody>${ci}${cost.total ? `<tr class="p-table__total"><td>Total</td><td></td><td class="num">${esc(cost.total)}</td></tr>` : ''}</tbody></table>
-    ${cost.notes ? `<div class="p-note">${esc(cost.notes)}</div>` : ''}</section>`);
+    <tbody>\${ci}\${cost.total ? \`<tr class="p-table__total"><td>Total</td><td></td><td class="num">\${esc(cost.total)}</td></tr>\` : ''}</tbody></table>
+    \${cost.notes ? \`<div class="p-note">\${esc(cost.notes)}</div>\` : ''}</section>\`);
   }
-
-  const mp = (d.milestonesPayment || []).map((r) => `<tr><td>${esc(r.milestone)}</td><td class="num">${esc(r.percentage)}</td><td class="num">${esc(r.amount)}</td><td>${esc(r.trigger)}</td></tr>`).join('');
+  const mp = (d.milestonesPayment || []).map((r) => \`<tr><td>\${esc(r.milestone)}</td><td class="num">\${esc(r.percentage)}</td><td class="num">\${esc(r.amount)}</td><td>\${esc(r.trigger)}</td></tr>\`).join('');
   if (d.meta.paymentDetails) {
-    sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}<div class="p-lede"><p>${esc(d.meta.paymentDetails)}</p></div></section>`);
+    sec.push(\`<section class="p-section">\${sectionHead(7, 'Milestones and Payment Terms')}<div class="p-lede"><p>\${esc(d.meta.paymentDetails)}</p></div></section>\`);
   } else {
-    sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}
-    <table class="p-table"><thead><tr><th>Milestone</th><th class="num">%</th><th class="num">Amount</th><th>Trigger</th></tr></thead><tbody>${mp}</tbody></table></section>`);
+    sec.push(\`<section class="p-section">\${sectionHead(7, 'Milestones and Payment Terms')}
+    <table class="p-table"><thead><tr><th>Milestone</th><th class="num">%</th><th class="num">Amount</th><th>Trigger</th></tr></thead><tbody>\${mp}</tbody></table></section>\`);
   }
-
-  sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}${list(d.paymentOptions)}</section>`);
-
+  sec.push(\`<section class="p-section">\${sectionHead(8, 'Payment Options')}\${list(d.paymentOptions)}</section>\`);
   const pls = d.postLaunchSupport || {};
-  sec.push(`<section class="p-section">${sectionHead(9, 'Post Launch Support')}${paras(pls.summary)}${list(pls.inclusions, 'p-list--check')}</section>`);
-
-  const terms = (d.termsAndServices || []).map((t) => `<p class="p-term"><span class="p-term__h">${esc(t.heading)}:</span> <span class="p-term__b">${esc(t.body)}</span></p>`).join('');
-  sec.push(`<section class="p-section">${sectionHead(10, 'Terms and Services')}<div class="p-terms">${terms}</div></section>`);
-
-  const sign = `
+  sec.push(\`<section class="p-section">\${sectionHead(9, 'Post Launch Support')}\${paras(pls.summary)}\${list(pls.inclusions, 'p-list--check')}</section>\`);
+  const terms = (d.termsAndServices || []).map((t) => \`<p class="p-term"><span class="p-term__h">\${esc(t.heading)}:</span> <span class="p-term__b">\${esc(t.body)}</span></p>\`).join('');
+  sec.push(\`<section class="p-section">\${sectionHead(10, 'Terms and Services')}<div class="p-terms">\${terms}</div></section>\`);
+  const sign = \`
     <section class="p-sign">
       <p class="p-sign__intro">To proceed, the client may confirm acceptance in writing. PocketDevs will then issue the reservation invoice and schedule a short scoping call to align on timeline, deliverables, and any final details.</p>
       <div class="p-sign__line"></div>
-      <div class="p-sign__name">${esc(pb.name || 'Eric Jeremie Rotaquio')}</div>
-      <div class="p-sign__title">${esc(pb.title || 'Chief Executive Officer, PocketDevs')}</div>
-    </section>`;
-
-  const footer = `<div class="p-docfooter"><span><b>PocketDevs</b></span><span>Confidential</span><span>www.pocketdevs.ph</span></div>`;
+      <div class="p-sign__name">\${esc(pb.name || 'Eric Jeremie Rotaquio')}</div>
+      <div class="p-sign__title">\${esc(pb.title || 'Chief Executive Officer, PocketDevs')}</div>
+    </section>\`;
+  const footer = \`<div class="p-docfooter"><span><b>PocketDevs</b></span><span>Confidential</span><span>www.pocketdevs.ph</span></div>\`;
 
   const art = $('proposal');
   art.innerHTML = cover + sec.join('') + sign + footer;
@@ -424,94 +423,90 @@ function render(d) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+/* ---------- Auth Modal ---------- */
+function showAuthModal() {
+  $('authModal').classList.add('modal--visible');
+}
+function hideAuthModal() {
+  $('authModal').classList.remove('modal--visible');
+}
+
+async function handleAuth(e) {
+  e.preventDefault();
+  const email = $('authEmail').value;
+  const password = $('authPassword').value;
+  const isSignUp = e.submitter.dataset.mode === 'signup';
+
+  const { data, error } = isSignUp 
+    ? await supabase.auth.signUp({ email, password })
+    : await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    showToast(error.message, 'error');
+  } else {
+    showToast(isSignUp ? 'Check your email to confirm sign up!' : 'Welcome back!', 'success');
+    hideAuthModal();
+    updateAuthState();
+  }
+}
+
+async function updateAuthState() {
+  const session = await getSession();
+  const btn = $('authNavBtn');
+  if (session) {
+    btn.textContent = session.user.email.split('@')[0];
+    btn.onclick = async () => {
+      await supabase.auth.signOut();
+      updateAuthState();
+    };
+    refreshHistory();
+  } else {
+    btn.textContent = 'Login';
+    btn.onclick = showAuthModal;
+    $('historyList').innerHTML = '<p class="card__hint">Login to see your history.</p>';
+  }
+}
+
+/* ---------- History ---------- */
+async function refreshHistory() {
+  const items = await fetchUserProposals();
+  const list = $('historyList');
+  if (!items.length) {
+    list.innerHTML = '<p class="card__hint">No proposals saved yet.</p>';
+    return;
+  }
+  list.innerHTML = items.map(p => \`
+    <div class="history-item" data-id="\${p.id}">
+      <div class="history-item__title">\${esc(p.title || 'Untitled')}</div>
+      <div class="history-item__meta">\${esc(p.client_company)} · \${esc(p.document_number)}</div>
+    </div>
+  \`).join('');
+  
+  list.querySelectorAll('.history-item').forEach(el => {
+    el.onclick = () => {
+      const p = items.find(i => i.id === el.dataset.id);
+      render(p.content);
+    };
+  });
+}
+
 /* ---------- PDF Generation ---------- */
 function downloadPDF() {
   const element = $('proposal');
   const docNo = document.querySelector('.js-doc-no')?.innerText?.trim() || 'PD-PROPOSAL';
   const opt = {
     margin: [15, 15],
-    filename: `${docNo}.pdf`,
+    filename: \`\${docNo}.pdf\`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, letterRendering: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
-
   setStatus('working', '<span class="spinner"></span>Generating PDF file...');
-  
   html2pdf().set(opt).from(element).save()
     .then(() => setStatus('ok', 'PDF downloaded successfully.'))
-    .catch(err => setStatus('error', `PDF generation failed: ${err.message}`));
+    .catch(err => setStatus('error', \`PDF generation failed: \${err.message}\`));
 }
-
-/* ---------- Draft persistence ---------- */
-function saveDraft(d) { try { localStorage.setItem(LS_DRAFT, JSON.stringify(d)); } catch (e) {} }
-function loadDraft() { try { const s = localStorage.getItem(LS_DRAFT); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
-
-function duplicateLast() {
-  const draft = loadDraft();
-  if (!draft) { setStatus('error', 'No previous proposal to duplicate yet — generate one first.'); return; }
-  const copy = JSON.parse(JSON.stringify(draft));
-  copy.meta = copy.meta || {};
-  copy.meta.documentNumber = freshDocNo();
-  copy.meta.preparedDate = formatToday();
-  render(copy);
-  saveDraft(copy);
-  setStatus('ok', 'Duplicated your last proposal with a fresh document number — edit the client details, then Download PDF.');
-}
-
-/* ---------- Sample data ---------- */
-const SAMPLE = {
-  meta: { documentNumber: 'PD-2026-0614', preparedDate: 'June 14, 2026', validUntil: 'June 28, 2026', title: 'E-Commerce Website Redesign & Build', currency: 'PHP' },
-  client: { company: 'Ecoflo Undies, Inc.', contactName: 'Maria Santos', contactTitle: 'Head of Growth' },
-  preparedBy: { name: 'Eric Jeremie Rotaquio', title: 'Chief Executive Officer, PocketDevs', company: 'PocketDevs' },
-  executiveSummary: 'Ecoflo Undies is ready to move off its template storefront and onto a fast, conversion-focused site that reflects the brand. This proposal covers a full redesign and rebuild of the e-commerce experience — from information architecture and visual design through a performant Shopify front end, checkout optimization, and analytics.\n\nThe engagement is structured in four phases over eight weeks, with a fixed commercial basis and milestone-aligned payments. PocketDevs leads design and engineering end to end; Ecoflo provides brand assets, product data, and timely reviews.',
-  solutionsOutline: {
-    summary: 'A redesigned, mobile-first storefront built on a clean component system, tuned for speed and checkout conversion, with the content tooling for the team to run it without engineering.',
-    points: ['Mobile-first redesign of home, collection, product, cart, and checkout', 'Reusable component/design system for consistent, fast iteration', 'Performance budget targeting sub-2s loads on 4G', 'Conversion-rate optimization across the funnel', 'Analytics and event tracking wired to GA4 and the ads pixels', 'Editable content sections so Marketing can update without code'],
-  },
-  objectives: ['Lift add-to-cart and checkout conversion by a measurable margin', 'Cut mobile page load to under 2 seconds', 'Give Marketing self-serve control of merchandising and content', 'Establish a scalable design system for future campaigns'],
-  scopeOfWork: [
-    { phase: 'Phase 1 — Discovery & IA', deliverables: ['Stakeholder workshop and goals alignment', 'Analytics and funnel audit of the current store', 'Sitemap and information architecture', 'Success metrics and tracking plan'] },
-    { phase: 'Phase 2 — Design', deliverables: ['Wireframes for all key templates', 'High-fidelity visual design and component library', 'Two rounds of revisions', 'Design QA and handoff specs'] },
-    { phase: 'Phase 3 — Build', deliverables: ['Theme build on the approved design system', 'Responsive front-end implementation', 'Checkout optimization and app integrations', 'Content sections configured for self-serve editing'] },
-    { phase: 'Phase 4 — Launch', deliverables: ['Cross-browser and device QA', 'Performance tuning to the agreed budget', 'Analytics verification and go-live', 'Team training and handover documentation'] },
-  ],
-  timeline: [
-    { phase: 'Discovery & IA', duration: '1 week', milestone: 'Approved sitemap & tracking plan' },
-    { phase: 'Design', duration: '3 weeks', milestone: 'Signed-off visual design' },
-    { phase: 'Build', duration: '3 weeks', milestone: 'Staging site ready for QA' },
-    { phase: 'Launch', duration: '1 week', milestone: 'Production go-live' },
-  ],
-  cost: {
-    lineItems: [
-      { item: 'Discovery & information architecture', basis: 'Fixed', amount: 'Php 60,000' },
-      { item: 'UX/UI design & component system', basis: 'Fixed', amount: 'Php 120,000' },
-      { item: 'Front-end build & integrations', basis: 'Fixed', amount: 'Php 150,000' },
-      { item: 'QA, performance & launch', basis: 'Fixed', amount: 'Php 60,000' },
-    ],
-    notes: 'Exclusive of 12% VAT, third-party app subscriptions, and stock media. Hosting remains on the client’s Shopify plan.',
-    total: 'Php 390,000',
-  },
-  milestonesPayment: [
-    { milestone: 'Project kickoff', percentage: '40%', amount: 'Php 156,000', trigger: 'Upon signed acceptance' },
-    { milestone: 'Design sign-off', percentage: '30%', amount: 'Php 117,000', trigger: 'Approval of Phase 2 design' },
-    { milestone: 'Production go-live', percentage: '30%', amount: 'Php 117,000', trigger: 'Successful launch & handover' },
-  ],
-  paymentOptions: ['Bank transfer / InstaPay to PocketDevs', 'GCash for Business', 'Credit card via invoice (processing fees apply)'],
-  postLaunchSupport: {
-    summary: 'A 30-day warranty period is included after go-live to resolve defects at no charge. Ongoing care is available on a retainer.',
-    inclusions: ['30-day bug-fix warranty on delivered scope', 'Critical-issue response within one business day', 'Optional monthly care retainer for updates and enhancements', 'Knowledge-base docs and a recorded handover session'],
-  },
-  termsAndServices: [
-    { heading: 'Confirmation & payment', body: 'Work is scheduled after written acceptance and the kickoff payment. Subsequent milestones are invoiced on completion and due within 7 days.' },
-    { heading: 'Taxes & expenses', body: 'Quoted amounts are exclusive of 12% VAT and any agreed out-of-pocket expenses (paid apps, fonts, stock media).' },
-    { heading: 'Scope control', body: 'Requests beyond the agreed scope are estimated and quoted separately before work proceeds.' },
-    { heading: 'IP & internal-use license', body: 'On full payment, deliverables transfer to the client. PocketDevs retains its pre-existing methods, components, and templates.' },
-    { heading: 'Warranty & support', body: 'A 30-day defect warranty is included. PocketDevs provides development and design, not legal, security, or compliance certification.' },
-    { heading: 'Validity', body: 'This quotation is valid until June 28, 2026. Pricing and availability are subject to reconfirmation after that date.' },
-  ],
-};
 
 /* ---------- Date helpers ---------- */
 function formatToday() {
@@ -521,7 +516,7 @@ function freshDocNo() {
   const now = new Date();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
-  return `PD-${now.getFullYear()}-${mm}${dd}`;
+  return \`PD-\${now.getFullYear()}-\${mm}\${dd}\`;
 }
 function autofillMeta() {
   $('f_docno').value = freshDocNo();
@@ -543,6 +538,7 @@ function init() {
   initDropzone();
   applyLogo();
   autofillMeta();
+  updateAuthState();
 
   $('settingsBtn').addEventListener('click', () => { $('settingsPanel').hidden = !$('settingsPanel').hidden; });
   $('showKey').addEventListener('change', (e) => { $('apiKey').type = e.target.checked ? 'text' : 'password'; });
@@ -554,16 +550,13 @@ function init() {
   });
   $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
   $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
-  $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default PocketDevs logo.'); });
+  $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default logo.'); });
   $('f_locale').addEventListener('change', () => { $('f_date').value = formatToday(); });
 
   $('generateBtn').addEventListener('click', generate);
-  $('duplicateBtn').addEventListener('click', duplicateLast);
-  $('sampleBtn').addEventListener('click', () => { render(SAMPLE); setStatus('ok', 'Loaded sample data. This is the template — generate from a real PDF to replace it.'); });
   $('downloadBtn').addEventListener('click', downloadPDF);
-
-  const draft = loadDraft();
-  if (draft) { render(draft); setStatus('', ''); }
+  $('authForm').addEventListener('submit', handleAuth);
+  $('closeAuth').addEventListener('click', hideAuthModal);
 }
 
 document.addEventListener('DOMContentLoaded', init);
