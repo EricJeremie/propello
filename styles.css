@@ -140,7 +140,10 @@ button, input, textarea, select { font-family: inherit; }
 }
 .dropzone:hover { border-color: var(--rausch); background: rgba(242, 56, 74, 0.05); }
 .dropzone__text { font-size: 0.8125rem; }
-.dropzone__file { font-size: 0.75rem; color: var(--rausch); font-weight: 600; }
+.dropzone__file {
+  font-size: 0.75rem; color: var(--rausch); font-weight: 600;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 
 /* History */
 .history-list { display: flex; flex-direction: column; gap: 0.5rem; }
