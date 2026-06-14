@@ -31,12 +31,18 @@ replace that file — keep the name `logo.svg`, or update the `src` references i
 Brand red, fonts, and spacing are CSS variables at the top of `styles.css`.
 
 ## Deploy to Vercel
-It's static — no build step. Either:
-- Drag the folder into a new Vercel project, or
-- `vercel` from this directory (framework preset: **Other**, output dir: `.`).
+Source repo: **https://github.com/EricJeremie/pocketdevs-proposal-generator** (public).
+
+It's a static site — no build step. To go live (one-time import):
+1. Go to https://vercel.com/new → **PocketDevs' projects** team.
+2. **Import** `pocketdevs-proposal-generator` from GitHub.
+3. Framework preset: **Other**. Build command: *none*. Output directory: `.` (leave default — root).
+4. **Deploy**. You'll get a `*.vercel.app` URL.
+
+After that, every `git push` to `main` auto-deploys (same as the marketplace).
 
 Each visitor supplies their own API key (it is never embedded in the page), so the deployed site
-is safe to share.
+is safe to share publicly.
 
 ## Notes
 - Calls `https://api.anthropic.com/v1/messages` directly from the browser using the
