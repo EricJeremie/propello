@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-import { getSession, signIn, signUp, signOut, saveProposal, fetchUserProposals, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
+import { getSession, signIn, signUp, signOut, saveProposal, fetchUserProposals, deleteProposal, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
 
 /* ---------- Constants ---------- */
 const MODEL = 'gemini-2.5-flash';
@@ -527,15 +527,25 @@ async function refreshHistory() {
     }
     list.innerHTML = items.map(p => `
       <div class="history-item" data-id="${p.id}">
-        <div class="history-item__title">${esc(p.project_title || 'Untitled')}</div>
-        <div class="history-item__meta">${esc(p.client_name || '')} · ${esc(p.doc_number || '')}</div>
+        <div class="history-item__body">
+          <div class="history-item__title">${esc(p.project_title || 'Untitled')}</div>
+          <div class="history-item__meta">${esc(p.client_name || '')} · ${esc(p.doc_number || '')}</div>
+        </div>
+        <button type="button" class="history-item__delete" title="Delete proposal" aria-label="Delete proposal">&times;</button>
       </div>
     `).join('');
-    
+
     list.querySelectorAll('.history-item').forEach(el => {
-      el.onclick = () => {
+      el.querySelector('.history-item__body').onclick = () => {
         const p = items.find(i => i.id === el.dataset.id);
         if (p && p.content) render(p.content);
+      };
+      el.querySelector('.history-item__delete').onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm('Delete this saved proposal? This cannot be undone.')) return;
+        const { error } = await deleteProposal(el.dataset.id);
+        if (error) { alert('Could not delete proposal: ' + (error.message || error)); return; }
+        refreshHistory();
       };
     });
   } catch (err) {

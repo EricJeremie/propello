@@ -145,12 +145,20 @@ button, input, textarea, select { font-family: inherit; }
 /* History */
 .history-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .history-item {
+  display: flex; align-items: center; gap: 0.5rem;
   padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border);
-  cursor: pointer; transition: background 0.15s ease;
+  transition: background 0.15s ease;
 }
 .history-item:hover { background: var(--bg-subtle); }
+.history-item__body { flex: 1; min-width: 0; cursor: pointer; }
 .history-item__title { font-size: 0.8125rem; font-weight: 600; }
 .history-item__meta { font-size: 0.75rem; color: var(--text-muted); }
+.history-item__delete {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px;
+  border: 1px solid transparent; background: transparent; color: var(--text-muted);
+  font-size: 1.1rem; line-height: 1; cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+}
+.history-item__delete:hover { background: var(--rausch-tint); color: var(--rausch); border-color: #f6c9ce; }
 
 /* Modal */
 .modal {

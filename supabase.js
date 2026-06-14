@@ -101,6 +101,24 @@ export async function saveProposal(proposalData) {
   }
 }
 
+export async function deleteProposal(id) {
+  const sb = await getClient();
+  if (!sb) return { error: 'offline' };
+  const session = await getSession();
+  if (!session) return { error: 'not-authenticated' };
+  try {
+    const { error } = await sb
+      .from('proposals')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+    return { error };
+  } catch (err) {
+    console.error('Delete proposal failed:', err);
+    return { error: err.message };
+  }
+}
+
 export async function fetchUserProposals() {
   const sb = await getClient();
   if (!sb) return [];
