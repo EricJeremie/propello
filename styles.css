@@ -201,6 +201,7 @@ button, input, textarea, select { font-family: inherit; }
   display: flex; align-items: center; justify-content: center; transition: background 0.15s ease;
 }
 .editor-toolbar__btn:hover { background: var(--bg-subtle); }
+.editor-toolbar__btn.is-active { background: var(--rausch-tint); color: var(--rausch); }
 .editor-toolbar__sep { width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem; }
 .editor-toolbar__select {
   height: 32px; border-radius: 6px; border: 1px solid var(--border);
