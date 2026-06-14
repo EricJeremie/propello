@@ -338,7 +338,7 @@ function render(d) {
       <div class="p-cover__top">
         <img src="${esc(currentLogo())}" alt="Logo" class="p-cover__logo js-logo" />
         <div class="p-eyebrow">
-          <div><b>${esc(m.documentNumber || '[TBD]')}</b></div>
+          <div class="js-doc-no"><b>${esc(m.documentNumber || '[TBD]')}</b></div>
           <div>Prepared ${esc(m.preparedDate || '[TBD]')}</div>
           ${m.validUntil ? `<div>Valid until ${esc(m.validUntil)}</div>` : ''}
         </div>
@@ -422,6 +422,26 @@ function render(d) {
   art.setAttribute('spellcheck', 'false');
   $('downloadBtn').disabled = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ---------- PDF Generation ---------- */
+function downloadPDF() {
+  const element = $('proposal');
+  const docNo = document.querySelector('.js-doc-no')?.innerText?.trim() || 'PD-PROPOSAL';
+  const opt = {
+    margin: [15, 15],
+    filename: `${docNo}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  setStatus('working', '<span class="spinner"></span>Generating PDF file...');
+  
+  html2pdf().set(opt).from(element).save()
+    .then(() => setStatus('ok', 'PDF downloaded successfully.'))
+    .catch(err => setStatus('error', `PDF generation failed: ${err.message}`));
 }
 
 /* ---------- Draft persistence ---------- */
@@ -540,7 +560,7 @@ function init() {
   $('generateBtn').addEventListener('click', generate);
   $('duplicateBtn').addEventListener('click', duplicateLast);
   $('sampleBtn').addEventListener('click', () => { render(SAMPLE); setStatus('ok', 'Loaded sample data. This is the template — generate from a real PDF to replace it.'); });
-  $('downloadBtn').addEventListener('click', () => window.print());
+  $('downloadBtn').addEventListener('click', downloadPDF);
 
   const draft = loadDraft();
   if (draft) { render(draft); setStatus('', ''); }
