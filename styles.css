@@ -188,9 +188,9 @@ button, input, textarea, select { font-family: inherit; }
 
 /* Editor toolbar */
 .editor-toolbar {
-  display: flex; gap: 0.25rem; align-items: center;
+  display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap;
   position: sticky; top: 0; z-index: 10;
-  width: fit-content; margin: 0 auto 1rem;
+  max-width: 210mm; margin: 0 auto 1rem;
   background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 0.35rem;
 }
@@ -202,6 +202,25 @@ button, input, textarea, select { font-family: inherit; }
 }
 .editor-toolbar__btn:hover { background: var(--bg-subtle); }
 .editor-toolbar__sep { width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem; }
+.editor-toolbar__select {
+  height: 32px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text); font-size: 0.8125rem;
+  padding: 0 0.4rem; cursor: pointer; max-width: 8.5rem;
+}
+.editor-toolbar__select--font { max-width: 9.5rem; }
+.editor-toolbar__color {
+  position: relative; width: 32px; height: 32px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8125rem; font-weight: 700; cursor: pointer; transition: background 0.15s ease;
+}
+.editor-toolbar__color:hover { background: var(--bg-subtle); }
+.editor-toolbar__color .editor-toolbar__hl {
+  text-decoration: underline; text-decoration-color: #fff59d; text-decoration-thickness: 3px;
+}
+.editor-toolbar__color input[type="color"] {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer; border: none; padding: 0;
+}
 
 /* Proposal Paper */
 .paper-wrap {

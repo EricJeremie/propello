@@ -426,13 +426,58 @@ function render(d) {
 }
 
 /* ---------- Rich text editor toolbar ---------- */
-$('editorToolbar').querySelectorAll('button[data-cmd]').forEach((btn) => {
-  btn.addEventListener('mousedown', (e) => {
-    e.preventDefault(); // keep the current text selection focused
-    $('proposal').focus();
-    document.execCommand(btn.dataset.cmd, false, null);
+(() => {
+  const editor = $('proposal');
+  const toolbar = $('editorToolbar');
+  let savedRange = null;
+
+  function saveSelection() {
+    const sel = window.getSelection();
+    if (sel.rangeCount && editor.contains(sel.anchorNode)) {
+      savedRange = sel.getRangeAt(0).cloneRange();
+    }
+  }
+  function restoreSelection() {
+    if (!savedRange) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+  editor.addEventListener('mouseup', saveSelection);
+  editor.addEventListener('keyup', saveSelection);
+
+  try { document.execCommand('styleWithCSS', false, true); } catch (e) { /* ignore */ }
+
+  toolbar.querySelectorAll('button[data-cmd]').forEach((btn) => {
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault(); // keep the current text selection focused
+      editor.focus();
+      restoreSelection();
+      document.execCommand(btn.dataset.cmd, false, null);
+      saveSelection();
+    });
   });
-});
+
+  toolbar.querySelectorAll('select[data-cmd]').forEach((sel) => {
+    sel.addEventListener('mousedown', saveSelection);
+    sel.addEventListener('change', () => {
+      editor.focus();
+      restoreSelection();
+      document.execCommand(sel.dataset.cmd, false, sel.value);
+      saveSelection();
+    });
+  });
+
+  toolbar.querySelectorAll('input[type="color"][data-cmd]').forEach((inp) => {
+    inp.addEventListener('mousedown', saveSelection);
+    inp.addEventListener('input', () => {
+      editor.focus();
+      restoreSelection();
+      document.execCommand(inp.dataset.cmd, false, inp.value);
+      saveSelection();
+    });
+  });
+})();
 
 /* ---------- Auth Modal ---------- */
 function showAuthModal() {
