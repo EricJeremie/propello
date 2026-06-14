@@ -1,6 +1,6 @@
 /* ============================================================
    PocketDevs Proposal Generator
-   Build-free static app. Calls Claude (Opus 4.8) directly from
+   Build-free static app. Calls Google Gemini directly from
    the browser; renders structured JSON into a branded proposal.
    ============================================================ */
 'use strict';
@@ -8,9 +8,9 @@
 import { getSession, signIn, signUp, signOut, saveProposal, fetchUserProposals, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
 
 /* ---------- Constants ---------- */
-const MODEL = 'claude-opus-4-8';
+const MODEL = 'gemini-2.5-flash';
 // Generation goes through a Supabase Edge Function, which holds the
-// Anthropic key as a server-side secret. The browser never sees the key.
+// Gemini key as a server-side secret. The browser never sees the key.
 const API_URL = `${SUPABASE_URL}/functions/v1/generate-proposal`;
 const LS_LOGO = 'pdv_logo';
 const DEFAULT_LOGO = 'assets/logo.svg';
@@ -221,7 +221,7 @@ function collectIntake() {
 /* ---------- Generate ---------- */
 async function generate() {
   // Generation runs through a Supabase Edge Function, which holds the
-  // Anthropic key server-side and requires a signed-in user. We need a valid
+  // Gemini key server-side and requires a signed-in user. We need a valid
   // Supabase session token to authorize the call.
   const session = await getSession();
   if (!session || !session.access_token) {
@@ -295,7 +295,7 @@ async function generate() {
     if (!res.ok) {
       const msg = data && data.error ? data.error.message : `HTTP ${res.status}`;
       // Only prompt to sign in when our own edge function rejected the session —
-      // not when Anthropic's API itself returns a 401 (e.g. invalid server-side API key).
+      // not when Gemini's API itself returns a 401 (e.g. invalid server-side API key).
       if (res.status === 401 && /sign(ed)? in|session/i.test(msg)) { showAuthModal(); }
       setStatus('error', `Generation failed: ${esc(msg)}`);
       return;
