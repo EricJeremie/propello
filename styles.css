@@ -186,6 +186,23 @@ button, input, textarea, select { font-family: inherit; }
 .toast--success { border-color: #10b981; color: #10b981; }
 .toast--error { border-color: var(--rausch); color: var(--rausch); }
 
+/* Editor toolbar */
+.editor-toolbar {
+  display: flex; gap: 0.25rem; align-items: center;
+  position: sticky; top: 0; z-index: 10;
+  width: fit-content; margin: 0 auto 1rem;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 0.35rem;
+}
+.editor-toolbar[hidden] { display: none; }
+.editor-toolbar__btn {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent;
+  background: transparent; cursor: pointer; font-size: 0.8125rem; color: var(--text);
+  display: flex; align-items: center; justify-content: center; transition: background 0.15s ease;
+}
+.editor-toolbar__btn:hover { background: var(--bg-subtle); }
+.editor-toolbar__sep { width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem; }
+
 /* Proposal Paper */
 .paper-wrap {
   width: 210mm; margin: 0 auto;

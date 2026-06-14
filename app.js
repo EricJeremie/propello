@@ -421,8 +421,18 @@ function render(d) {
   art.setAttribute('contenteditable', 'true');
   art.setAttribute('spellcheck', 'false');
   $('downloadBtn').disabled = false;
+  $('editorToolbar').hidden = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+/* ---------- Rich text editor toolbar ---------- */
+$('editorToolbar').querySelectorAll('button[data-cmd]').forEach((btn) => {
+  btn.addEventListener('mousedown', (e) => {
+    e.preventDefault(); // keep the current text selection focused
+    $('proposal').focus();
+    document.execCommand(btn.dataset.cmd, false, null);
+  });
+});
 
 /* ---------- Auth Modal ---------- */
 function showAuthModal() {
