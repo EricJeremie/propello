@@ -231,7 +231,13 @@ function collectIntake() {
 
 /* ---------- Generate ---------- */
 async function generate() {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (e) {
+    showToast('Failed to check auth session.', 'error');
+  }
+
   if (!session) {
     showAuthModal();
     return;
@@ -322,7 +328,11 @@ async function generate() {
     catch (e) { setStatus('error', 'Response was not valid JSON.'); return; }
 
     render(proposal);
-    await saveProposal(proposal);
+    const { error: saveErr } = await saveProposal(proposal);
+    if (saveErr) {
+      console.warn('Could not save proposal to history:', saveErr);
+      showToast('Proposal generated but failed to save to history.', 'info');
+    }
     refreshHistory();
     setStatus('ok', \`Proposal generated. Click any text to edit, then <b>Download PDF</b>.\`);
   } catch (err) {
@@ -343,6 +353,7 @@ function list(items, mod) {
 }
 
 function render(d) {
+  if (!d) return;
   const m = d.meta || {}, c = d.client || {}, pb = d.preparedBy || {};
   const cover = \`
     <header class="p-cover">
@@ -437,57 +448,69 @@ async function handleAuth(e) {
   const password = $('authPassword').value;
   const isSignUp = e.submitter.dataset.mode === 'signup';
 
-  const { data, error } = isSignUp 
-    ? await supabase.auth.signUp({ email, password })
-    : await supabase.auth.signInWithPassword({ email, password });
+  try {
+    const { data, error } = isSignUp 
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
-    showToast(error.message, 'error');
-  } else {
-    showToast(isSignUp ? 'Check your email to confirm sign up!' : 'Welcome back!', 'success');
-    hideAuthModal();
-    updateAuthState();
+    if (error) {
+      showToast(error.message, 'error');
+    } else {
+      showToast(isSignUp ? 'Check your email to confirm sign up!' : 'Welcome back!', 'success');
+      hideAuthModal();
+      updateAuthState();
+    }
+  } catch (err) {
+    showToast('Authentication failed unexpectedly.', 'error');
   }
 }
 
 async function updateAuthState() {
-  const session = await getSession();
-  const btn = $('authNavBtn');
-  if (session) {
-    btn.textContent = session.user.email.split('@')[0];
-    btn.onclick = async () => {
-      await supabase.auth.signOut();
-      updateAuthState();
-    };
-    refreshHistory();
-  } else {
-    btn.textContent = 'Login';
-    btn.onclick = showAuthModal;
-    $('historyList').innerHTML = '<p class="card__hint">Login to see your history.</p>';
+  try {
+    const session = await getSession();
+    const btn = $('authNavBtn');
+    if (session) {
+      btn.textContent = session.user.email.split('@')[0];
+      btn.onclick = async () => {
+        await supabase.auth.signOut();
+        updateAuthState();
+      };
+      refreshHistory();
+    } else {
+      btn.textContent = 'Login';
+      btn.onclick = showAuthModal;
+      $('historyList').innerHTML = '<p class="card__hint">Login to see your history.</p>';
+    }
+  } catch (err) {
+    console.error('Auth state update failed:', err);
   }
 }
 
 /* ---------- History ---------- */
 async function refreshHistory() {
-  const items = await fetchUserProposals();
   const list = $('historyList');
-  if (!items.length) {
-    list.innerHTML = '<p class="card__hint">No proposals saved yet.</p>';
-    return;
+  try {
+    const items = await fetchUserProposals();
+    if (!items || !items.length) {
+      list.innerHTML = '<p class="card__hint">No proposals saved yet.</p>';
+      return;
+    }
+    list.innerHTML = items.map(p => \`
+      <div class="history-item" data-id="\${p.id}">
+        <div class="history-item__title">\${esc(p.title || 'Untitled')}</div>
+        <div class="history-item__meta">\${esc(p.client_company)} · \${esc(p.document_number)}</div>
+      </div>
+    \`).join('');
+    
+    list.querySelectorAll('.history-item').forEach(el => {
+      el.onclick = () => {
+        const p = items.find(i => i.id === el.dataset.id);
+        if (p && p.content) render(p.content);
+      };
+    });
+  } catch (err) {
+    list.innerHTML = '<p class="card__hint">History temporarily unavailable.</p>';
   }
-  list.innerHTML = items.map(p => \`
-    <div class="history-item" data-id="\${p.id}">
-      <div class="history-item__title">\${esc(p.title || 'Untitled')}</div>
-      <div class="history-item__meta">\${esc(p.client_company)} · \${esc(p.document_number)}</div>
-    </div>
-  \`).join('');
-  
-  list.querySelectorAll('.history-item').forEach(el => {
-    el.onclick = () => {
-      const p = items.find(i => i.id === el.dataset.id);
-      render(p.content);
-    };
-  });
 }
 
 /* ---------- PDF Generation ---------- */
@@ -534,29 +557,33 @@ function initDropzone() {
 }
 
 function init() {
-  initKey();
-  initDropzone();
-  applyLogo();
-  autofillMeta();
-  updateAuthState();
+  try {
+    initKey();
+    initDropzone();
+    applyLogo();
+    autofillMeta();
+    updateAuthState();
 
-  $('settingsBtn').addEventListener('click', () => { $('settingsPanel').hidden = !$('settingsPanel').hidden; });
-  $('showKey').addEventListener('change', (e) => { $('apiKey').type = e.target.checked ? 'text' : 'password'; });
-  $('saveKey').addEventListener('click', () => {
-    const v = $('apiKey').value.trim();
-    if (v) { localStorage.setItem(LS_KEY, v); } else { localStorage.removeItem(LS_KEY); }
-    refreshKeyDot();
-    $('settingsPanel').hidden = true;
-  });
-  $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
-  $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
-  $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default logo.'); });
-  $('f_locale').addEventListener('change', () => { $('f_date').value = formatToday(); });
+    $('settingsBtn').addEventListener('click', () => { $('settingsPanel').hidden = !$('settingsPanel').hidden; });
+    $('showKey').addEventListener('change', (e) => { $('apiKey').type = e.target.checked ? 'text' : 'password'; });
+    $('saveKey').addEventListener('click', () => {
+      const v = $('apiKey').value.trim();
+      if (v) { localStorage.setItem(LS_KEY, v); } else { localStorage.removeItem(LS_KEY); }
+      refreshKeyDot();
+      $('settingsPanel').hidden = true;
+    });
+    $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
+    $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
+    $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default logo.'); });
+    $('f_locale').addEventListener('change', () => { $('f_date').value = formatToday(); });
 
-  $('generateBtn').addEventListener('click', generate);
-  $('downloadBtn').addEventListener('click', downloadPDF);
-  $('authForm').addEventListener('submit', handleAuth);
-  $('closeAuth').addEventListener('click', hideAuthModal);
+    $('generateBtn').addEventListener('click', generate);
+    $('downloadBtn').addEventListener('click', downloadPDF);
+    $('authForm').addEventListener('submit', handleAuth);
+    $('closeAuth').addEventListener('click', hideAuthModal);
+  } catch (err) {
+    console.error('App initialization failed:', err);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
