@@ -387,14 +387,12 @@ function render(d) {
     <table class="p-table"><thead><tr><th>Phase</th><th>Duration</th><th>Key milestone</th></tr></thead><tbody>${tl}</tbody></table></section>`);
   const cost = d.cost || {};
   const ci = (cost.lineItems || []).map((r) => `<tr><td>${esc(r.item)}</td><td>${esc(r.basis)}</td><td class="num">${esc(r.amount)}</td></tr>`).join('');
-  if (d.meta.budget) {
-    sec.push(`<section class="p-section">${sectionHead(6, 'Project Cost')}<div class="p-lede"><p><strong>Proposed Budget:</strong> ${esc(d.meta.budget)}</p></div></section>`);
-  } else {
-    sec.push(`<section class="p-section">${sectionHead(6, 'Project Cost')}
-    <table class="p-table"><thead><tr><th>Line item</th><th>Basis</th><th class="num">Amount</th></tr></thead>
-    <tbody>${ci}${cost.total ? `<tr class="p-table__total"><td>Total</td><td></td><td class="num">${esc(cost.total)}</td></tr>` : ''}</tbody></table>
-    ${cost.notes ? `<div class="p-note">${esc(cost.notes)}</div>` : ''}</section>`);
-  }
+  const budgetLede = d.meta.budget ? `<div class="p-lede"><p><strong>Proposed Budget:</strong> ${esc(d.meta.budget)}</p></div>` : '';
+  sec.push(`<section class="p-section">${sectionHead(6, 'Project Cost')}
+  ${budgetLede}
+  <table class="p-table"><thead><tr><th>Line item</th><th>Basis</th><th class="num">Amount</th></tr></thead>
+  <tbody>${ci}${cost.total ? `<tr class="p-table__total"><td>Total</td><td></td><td class="num">${esc(cost.total)}</td></tr>` : ''}</tbody></table>
+  ${cost.notes ? `<div class="p-note">${esc(cost.notes)}</div>` : ''}</section>`);
   const mp = (d.milestonesPayment || []).map((r) => `<tr><td>${esc(r.milestone)}</td><td class="num">${esc(r.percentage)}</td><td class="num">${esc(r.amount)}</td><td>${esc(r.trigger)}</td></tr>`).join('');
   if (d.meta.paymentDetails) {
     sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}<div class="p-lede"><p>${esc(d.meta.paymentDetails)}</p></div></section>`);
