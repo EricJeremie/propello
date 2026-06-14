@@ -9,9 +9,9 @@ import { getSession, signIn, signUp, signOut, saveProposal, fetchUserProposals }
 
 /* ---------- Constants ---------- */
 const MODEL = 'claude-opus-4-8';
-const API_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
-const LS_KEY = 'pdv_api_key';
+// Generation goes through our own backend, which holds the Anthropic key
+// server-side (see api/generate.js). The browser never sees the key.
+const API_URL = '/api/generate';
 const LS_LOGO = 'pdv_logo';
 const DEFAULT_LOGO = 'assets/logo.svg';
 
@@ -165,17 +165,6 @@ function currencySymbol() {
   return (opt && opt.dataset.symbol) || '';
 }
 
-/* ---------- API key ---------- */
-function refreshKeyDot() {
-  const has = !!localStorage.getItem(LS_KEY);
-  $('keyDot').classList.toggle('dot--ok', has);
-}
-function initKey() {
-  const k = localStorage.getItem(LS_KEY);
-  if (k) $('apiKey').value = k;
-  refreshKeyDot();
-}
-
 /* ---------- File handling ---------- */
 function handleFile(file) {
   if (!file) return;
@@ -231,12 +220,13 @@ function collectIntake() {
 
 /* ---------- Generate ---------- */
 async function generate() {
-  // Login is OPTIONAL — generating never requires an account. If signed in, the
-  // result is saved to history; if not, it's still generated and downloadable.
-  const key = localStorage.getItem(LS_KEY) || $('apiKey').value.trim();
-  if (!key) {
-    $('settingsPanel').hidden = false;
-    setStatus('error', 'Add your Anthropic API key in Settings first.');
+  // Generation runs through our backend (/api/generate), which holds the
+  // Anthropic key server-side and requires a signed-in user. We need a valid
+  // Supabase session token to authorize the call.
+  const session = await getSession();
+  if (!session || !session.access_token) {
+    showAuthModal();
+    setStatus('error', 'Please sign in to generate a proposal.');
     return;
   }
   const intake = collectIntake();
@@ -295,9 +285,7 @@ async function generate() {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': ANTHROPIC_VERSION,
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(body),
     });
@@ -305,7 +293,7 @@ async function generate() {
 
     if (!res.ok) {
       const msg = data && data.error ? data.error.message : `HTTP ${res.status}`;
-      if (res.status === 401) { $('settingsPanel').hidden = false; }
+      if (res.status === 401) { showAuthModal(); }
       setStatus('error', `Generation failed: ${esc(msg)}`);
       return;
     }
@@ -318,16 +306,13 @@ async function generate() {
     catch (e) { setStatus('error', 'Response was not valid JSON.'); return; }
 
     render(proposal);
-    // Best-effort save to history (only when signed in; never blocks the result).
+    // Best-effort save to history (we're signed in; never blocks the result).
     try {
-      const session = await getSession();
-      if (session) {
-        const { error: saveErr } = await saveProposal(proposal);
-        if (saveErr && saveErr !== 'not-authenticated' && saveErr !== 'offline') {
-          console.warn('Could not save proposal to history:', saveErr);
-        } else if (!saveErr) {
-          refreshHistory();
-        }
+      const { error: saveErr } = await saveProposal(proposal);
+      if (saveErr && saveErr !== 'not-authenticated' && saveErr !== 'offline') {
+        console.warn('Could not save proposal to history:', saveErr);
+      } else if (!saveErr) {
+        refreshHistory();
       }
     } catch (e) { /* history is optional — ignore */ }
     setStatus('ok', `Proposal generated. Click any text to edit, then <b>Download PDF</b>.`);
@@ -554,20 +539,12 @@ function initDropzone() {
 
 function init() {
   try {
-    initKey();
     initDropzone();
     applyLogo();
     autofillMeta();
     updateAuthState();
 
     $('settingsBtn').addEventListener('click', () => { $('settingsPanel').hidden = !$('settingsPanel').hidden; });
-    $('showKey').addEventListener('change', (e) => { $('apiKey').type = e.target.checked ? 'text' : 'password'; });
-    $('saveKey').addEventListener('click', () => {
-      const v = $('apiKey').value.trim();
-      if (v) { localStorage.setItem(LS_KEY, v); } else { localStorage.removeItem(LS_KEY); }
-      refreshKeyDot();
-      $('settingsPanel').hidden = true;
-    });
     $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
     $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
     $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default logo.'); });

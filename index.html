@@ -21,9 +21,7 @@
     </div>
     <div class="appbar__actions">
       <button id="authNavBtn" class="btn btn--ghost">Login</button>
-      <button id="settingsBtn" class="btn btn--ghost" type="button">
-        <span class="dot" id="keyDot"></span> Settings
-      </button>
+      <button id="settingsBtn" class="btn btn--ghost" type="button">Settings</button>
       <button id="downloadBtn" class="btn btn--primary" type="button" disabled>Download PDF</button>
     </div>
   </header>
@@ -54,16 +52,8 @@
 
       <!-- Settings -->
       <section id="settingsPanel" class="card card--settings" hidden>
-        <h2 class="card__title">Anthropic API key</h2>
-        <div class="field">
-          <input id="apiKey" type="password" class="input" placeholder="sk-ant-..." />
-        </div>
-        <div class="field field--row">
-          <label class="check"><input type="checkbox" id="showKey" /> Show</label>
-          <button id="saveKey" class="btn btn--primary btn--sm">Save key</button>
-        </div>
-        <hr class="rule" />
         <h2 class="card__title">Logo</h2>
+        <p class="card__hint">Upload your brand logo (used across the proposal). Stored only in this browser.</p>
         <div class="logo-row">
           <img id="logoPreview" class="logo-preview js-logo" src="assets/logo.svg" />
           <input id="logoInput" type="file" accept="image/*" hidden />
