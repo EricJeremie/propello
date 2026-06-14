@@ -341,12 +341,19 @@ select.input { appearance: none; -webkit-appearance: none; background-image: url
    ============================================================ */
 @media print {
   @page { size: A4; margin: 16mm 15mm 18mm; }
-  html, body { background: #fff; }
+  
+  html, body { 
+    background: #fff; 
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important;
+  }
+
   .no-print { display: none !important; }
   .layout { display: block; }
   .stage { padding: 0; }
   .composer { display: none; }
   .paper-wrap { display: block; }
+  
   .proposal {
     width: auto; max-width: none; box-shadow: none; border-radius: 0;
     padding: 0; font-size: 11pt; line-height: 1.5;
@@ -363,6 +370,13 @@ select.input { appearance: none; -webkit-appearance: none; background-image: url
   .p-table { break-inside: auto; }
   .p-table thead { display: table-header-group; }
   .p-table tr { break-inside: avoid; }
+  
+  /* Ensure bullets aren't cut off and are colored */
+  .p-list li { 
+    break-inside: avoid; 
+    page-break-inside: avoid;
+    padding-left: 24px; /* Increased padding slightly for safety */
+  }
 
   /* Repeating confidential footer on every printed page */
   .p-docfooter { position: fixed; bottom: -12mm; left: 0; right: 0; border-top: none; margin: 0; }
