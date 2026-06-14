@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PocketDevs — Proposal Generator</title>
+  <meta name="description" content="Upload a PDF brief and auto-generate a branded PocketDevs proposal." />
+  <link rel="icon" href="assets/logo.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ====================== APP BAR ====================== -->
+  <header class="appbar no-print">
+    <div class="appbar__brand">
+      <img src="assets/logo.svg" alt="PocketDevs" class="appbar__logo js-logo" />
+      <span class="appbar__divider"></span>
+      <span class="appbar__title">Proposal Generator</span>
+    </div>
+    <div class="appbar__actions">
+      <button id="settingsBtn" class="btn btn--ghost" type="button" title="API settings">
+        <span class="dot" id="keyDot"></span> Settings
+      </button>
+      <button id="downloadBtn" class="btn btn--primary" type="button" disabled>Download PDF</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ====================== COMPOSER ====================== -->
+    <aside class="composer no-print">
+      <!-- Settings / API key -->
+      <section id="settingsPanel" class="card card--settings" hidden>
+        <h2 class="card__title">Anthropic API key</h2>
+        <p class="card__hint">Stored only in this browser (localStorage). Used to call Claude directly. Never uploaded anywhere else.</p>
+        <div class="field">
+          <input id="apiKey" type="password" class="input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field field--row">
+          <label class="check"><input type="checkbox" id="showKey" /> Show</label>
+          <button id="saveKey" class="btn btn--primary btn--sm" type="button">Save key</button>
+        </div>
+
+        <hr class="rule" />
+        <h2 class="card__title">Brand logo</h2>
+        <p class="card__hint">Upload your official logo (PNG/SVG/JPG). Stored only in this browser and used across the proposal. Leave default to use the built-in PocketDevs mark.</p>
+        <div class="logo-row">
+          <img id="logoPreview" class="logo-preview js-logo" src="assets/logo.svg" alt="Current logo" />
+          <input id="logoInput" type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" hidden />
+          <button id="logoUploadBtn" class="btn btn--primary btn--sm" type="button">Upload…</button>
+          <button id="logoResetBtn" class="btn btn--ghost btn--sm" type="button">Reset</button>
+        </div>
+      </section>
+
+      <!-- Step 1 — Source -->
+      <section class="card">
+        <div class="step"><span class="step__n">1</span><h2 class="card__title">Source document</h2></div>
+        <label id="dropzone" class="dropzone" for="fileInput" tabindex="0">
+          <input id="fileInput" type="file" accept="application/pdf" hidden />
+          <svg class="dropzone__icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L8 8m4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          <span class="dropzone__text"><strong>Drop a PDF</strong> or click to browse</span>
+          <span class="dropzone__file" id="fileName">No file selected</span>
+        </label>
+      </section>
+
+      <!-- Step 2 — Details -->
+      <section class="card">
+        <div class="step"><span class="step__n">2</span><h2 class="card__title">Proposal details</h2></div>
+        <p class="card__hint">Anchors the AI to real facts. Leave blank to let Claude propose — blanks render as <code>[TBD]</code>, never invented numbers.</p>
+
+        <div class="grid2">
+          <div class="field"><label class="label">Client / company</label><input id="f_company" class="input" placeholder="Acme Inc." /></div>
+          <div class="field"><label class="label">Project title</label><input id="f_title" class="input" placeholder="Website Redesign" /></div>
+          <div class="field"><label class="label">Contact name</label><input id="f_contact" class="input" placeholder="Jomar Mansilungan" /></div>
+          <div class="field"><label class="label">Contact title</label><input id="f_contactTitle" class="input" placeholder="Program Manager" /></div>
+          <div class="field"><label class="label">Currency</label>
+            <select id="f_currency" class="input">
+              <option value="PHP" data-symbol="₱">₱ PHP — Philippine Peso</option>
+              <option value="USD" data-symbol="$">$ USD — US Dollar</option>
+              <option value="EUR" data-symbol="€">€ EUR — Euro</option>
+              <option value="GBP" data-symbol="£">£ GBP — British Pound</option>
+              <option value="AUD" data-symbol="A$">A$ AUD — Australian Dollar</option>
+              <option value="SGD" data-symbol="S$">S$ SGD — Singapore Dollar</option>
+              <option value="CAD" data-symbol="C$">C$ CAD — Canadian Dollar</option>
+              <option value="AED" data-symbol="AED">AED — UAE Dirham</option>
+              <option value="JPY" data-symbol="¥">¥ JPY — Japanese Yen</option>
+            </select>
+          </div>
+          <div class="field"><label class="label">Locale (dates)</label>
+            <select id="f_locale" class="input">
+              <option value="en-PH">English (Philippines)</option>
+              <option value="en-US">English (US)</option>
+              <option value="en-GB">English (UK)</option>
+              <option value="en-AU">English (Australia)</option>
+              <option value="en-SG">English (Singapore)</option>
+              <option value="en-CA">English (Canada)</option>
+            </select>
+          </div>
+          <div class="field"><label class="label">Total cost</label><input id="f_cost" class="input" placeholder="e.g. ₱ 250,000" /></div>
+          <div class="field"><label class="label">Timeline</label><input id="f_timeline" class="input" placeholder="e.g. 8 weeks" /></div>
+          <div class="field"><label class="label">Valid until</label><input id="f_valid" class="input" placeholder="e.g. July 19, 2026" /></div>
+          <div class="field"><label class="label">Document no.</label><input id="f_docno" class="input" /></div>
+          <div class="field"><label class="label">Prepared date</label><input id="f_date" class="input" /></div>
+          <div class="field field--full"><label class="label">Prepared by (signatory)</label><input id="f_signatory" class="input" value="Eric Jeremie Rotaquio" /></div>
+          <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" value="Chief Executive Officer, PocketDevs" /></div>
+        </div>
+
+        <div class="field field--full">
+          <label class="label">Extra instructions <span class="label__opt">(optional)</span></label>
+          <textarea id="f_notes" class="input textarea" rows="2" placeholder="e.g. Emphasize SEO; bill in 3 milestones; exclude hosting."></textarea>
+        </div>
+      </section>
+
+      <!-- Step 3 — Generate -->
+      <section class="card">
+        <div class="step"><span class="step__n">3</span><h2 class="card__title">Generate</h2></div>
+        <button id="generateBtn" class="btn btn--primary btn--block" type="button">Generate proposal</button>
+        <button id="duplicateBtn" class="btn btn--ghost btn--block" type="button">Duplicate last proposal</button>
+        <button id="sampleBtn" class="btn btn--ghost btn--block" type="button">Load sample data</button>
+        <div id="status" class="status" hidden></div>
+      </section>
+    </aside>
+
+    <!-- ====================== STAGE / PREVIEW ====================== -->
+    <div class="stage">
+      <div class="stage__toolbar no-print">
+        <span class="stage__label">Live preview</span>
+        <span class="stage__edit-hint">Click any text to edit before downloading</span>
+      </div>
+
+      <div class="paper-wrap">
+        <article id="proposal" class="proposal" aria-live="polite">
+          <!-- Empty state -->
+          <div id="emptyState" class="empty">
+            <img src="assets/logo.svg" alt="" class="empty__logo js-logo" />
+            <h2>Your branded proposal will appear here</h2>
+            <p>Add your API key, drop a PDF brief, fill in the details, then hit <strong>Generate</strong>. Or click <strong>Load sample data</strong> to preview the template.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

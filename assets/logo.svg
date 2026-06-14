@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="150" viewBox="0 0 560 150" role="img" aria-label="PocketDevs">
+  <!-- Brand badge -->
+  <rect x="2" y="2" width="556" height="146" rx="30" fill="#F2384A"/>
+  <!-- White icon tile -->
+  <rect x="26" y="26" width="98" height="98" rx="22" fill="#FFFFFF"/>
+  <!-- Isometric cube "P" mark -->
+  <g transform="translate(75,75) scale(0.62)">
+    <polygon points="0,-32 28,-16 0,0 -28,-16" fill="#F2384A"/>
+    <polygon points="-28,-16 0,0 0,32 -28,16" fill="#F2384A" fill-opacity="0.82"/>
+    <polygon points="28,-16 28,16 0,32 0,0" fill="#F2384A" fill-opacity="0.66"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="150" y="96" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="800" font-size="62" fill="#FFFFFF" letter-spacing="-1.5">PocketDevs</text>
+</svg>
