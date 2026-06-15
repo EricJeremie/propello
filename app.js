@@ -683,6 +683,8 @@ async function updateAuthState() {
       greeting.hidden = false;
       greeting.textContent = `${greetingPhrase()}, ${firstName}!`;
 
+      $('openDashboardBtn').hidden = false;
+
       refreshHistory();
     } else {
       navBtn.hidden = false;
@@ -693,6 +695,8 @@ async function updateAuthState() {
       $('userMenuDropdown').hidden = true;
       greeting.hidden = true;
       $('historyList').innerHTML = '<p class="card__hint">Login to see your history.</p>';
+      $('openDashboardBtn').hidden = true;
+      hideDashboardModal();
     }
   } catch (err) {
     console.error('Auth state update failed:', err);
@@ -734,6 +738,85 @@ async function refreshHistory() {
   } catch (err) {
     list.innerHTML = '<p class="card__hint">History temporarily unavailable.</p>';
   }
+}
+
+/* ---------- Dashboard ---------- */
+let dashboardItems = [];
+
+function showDashboardModal() {
+  $('dashboardModal').classList.add('modal--visible');
+  $('dashboardSearch').value = '';
+  refreshDashboard();
+  $('dashboardSearch').focus();
+}
+function hideDashboardModal() {
+  $('dashboardModal').classList.remove('modal--visible');
+}
+
+async function refreshDashboard() {
+  const grid = $('dashboardGrid');
+  grid.innerHTML = '<p class="dashboard__empty">Loading…</p>';
+  try {
+    dashboardItems = await fetchUserProposals();
+    renderDashboardGrid(dashboardItems);
+  } catch (err) {
+    grid.innerHTML = '<p class="dashboard__empty">Documents temporarily unavailable.</p>';
+  }
+}
+
+function renderDashboardGrid(items) {
+  const grid = $('dashboardGrid');
+  if (!items.length) {
+    grid.innerHTML = '<p class="dashboard__empty">No documents found.</p>';
+    return;
+  }
+  grid.innerHTML = items.map((p) => {
+    const title = esc(p.project_title || 'Untitled');
+    const client = esc(p.client_name || '');
+    const docNo = esc(p.doc_number || '');
+    const updated = p.updated_at ? new Date(p.updated_at).toLocaleDateString(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+    return `
+      <div class="doc-card" data-id="${p.id}">
+        <button type="button" class="doc-card__delete" title="Delete document" aria-label="Delete document">&times;</button>
+        <div class="doc-card__thumb">
+          <img src="assets/logo.svg" class="js-logo" />
+          <div class="doc-card__thumb-title">${title}</div>
+        </div>
+        <div class="doc-card__body">
+          <div class="doc-card__title" title="${title}">${title}</div>
+          <div class="doc-card__meta" title="${client}${docNo ? ' · ' + docNo : ''}">${client}${docNo ? ' · ' + docNo : ''}</div>
+          <div class="doc-card__meta">${updated}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.doc-card').forEach((el) => {
+    el.addEventListener('click', () => {
+      const p = dashboardItems.find((i) => i.id === el.dataset.id);
+      if (p && p.content) {
+        render(p.content);
+        hideDashboardModal();
+      }
+    });
+    el.querySelector('.doc-card__delete').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('Delete this saved proposal? This cannot be undone.')) return;
+      const { error } = await deleteProposal(el.dataset.id);
+      if (error) { alert('Could not delete proposal: ' + (error.message || error)); return; }
+      refreshDashboard();
+      refreshHistory();
+    });
+  });
+}
+
+function filterDashboard(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { renderDashboardGrid(dashboardItems); return; }
+  const filtered = dashboardItems.filter((p) => {
+    return [p.project_title, p.client_name, p.doc_number].some((v) => (v || '').toLowerCase().includes(q));
+  });
+  renderDashboardGrid(filtered);
 }
 
 /* ---------- PDF Generation ---------- */
@@ -847,6 +930,16 @@ function init() {
       $('settingsPanel').hidden = !$('settingsPanel').hidden;
       $('userMenuDropdown').hidden = true;
     });
+    $('userMenuDashboard').addEventListener('click', () => {
+      $('userMenuDropdown').hidden = true;
+      showDashboardModal();
+    });
+    $('openDashboardBtn').addEventListener('click', showDashboardModal);
+    $('closeDashboard').addEventListener('click', hideDashboardModal);
+    $('dashboardModal').addEventListener('click', (e) => {
+      if (e.target === $('dashboardModal')) hideDashboardModal();
+    });
+    $('dashboardSearch').addEventListener('input', (e) => filterDashboard(e.target.value));
     $('userMenuLogout').addEventListener('click', async () => {
       $('userMenuDropdown').hidden = true;
       await signOut();
