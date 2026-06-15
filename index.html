@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -290,6 +290,11 @@
       <button id="closeDashboard" class="modal__close">&times;</button>
       <div class="dashboard__header">
         <h2 class="card__title">My Documents</h2>
+        <div class="dashboard__tabs" role="tablist">
+          <button type="button" class="dashboard__tab dashboard__tab--active" data-type="all">All</button>
+          <button type="button" class="dashboard__tab" data-type="proposal">Proposals</button>
+          <button type="button" class="dashboard__tab" data-type="invoice">Invoices</button>
+        </div>
         <input id="dashboardSearch" class="input dashboard__search" type="search" placeholder="Search by title, client, or doc no." />
       </div>
       <div id="dashboardGrid" class="dashboard__grid"></div>
@@ -324,6 +329,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=11"></script>
+  <script type="module" src="app.js?v=12"></script>
 </body>
 </html>

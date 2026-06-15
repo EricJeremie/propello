@@ -892,6 +892,25 @@ function openDocument(content) {
 }
 
 /* ---------- History ---------- */
+function historyItemHtml(p) {
+  return `
+    <div class="history-item" data-id="${p.id}">
+      <div class="history-item__body">
+        <div class="history-item__title">${esc(p.project_title || 'Untitled')}</div>
+        <div class="history-item__meta">${esc(p.client_name || '')} · ${esc(p.doc_number || '')}</div>
+      </div>
+      <button type="button" class="history-item__delete" title="Delete proposal" aria-label="Delete proposal">&times;</button>
+    </div>
+  `;
+}
+function historyGroupHtml(label, items) {
+  if (!items.length) return '';
+  return `<div class="history-group">
+    <div class="history-group__label">${label}</div>
+    ${items.map(historyItemHtml).join('')}
+  </div>`;
+}
+
 async function refreshHistory() {
   const list = $('historyList');
   try {
@@ -900,15 +919,9 @@ async function refreshHistory() {
       list.innerHTML = '<p class="card__hint">No proposals saved yet.</p>';
       return;
     }
-    list.innerHTML = items.map(p => `
-      <div class="history-item" data-id="${p.id}">
-        <div class="history-item__body">
-          <div class="history-item__title">${esc(p.project_title || 'Untitled')}${p.content && p.content.docType === 'invoice' ? '<span class="history-item__type">Invoice</span>' : ''}</div>
-          <div class="history-item__meta">${esc(p.client_name || '')} · ${esc(p.doc_number || '')}</div>
-        </div>
-        <button type="button" class="history-item__delete" title="Delete proposal" aria-label="Delete proposal">&times;</button>
-      </div>
-    `).join('');
+    const proposals = items.filter((p) => !(p.content && p.content.docType === 'invoice'));
+    const invoices = items.filter((p) => p.content && p.content.docType === 'invoice');
+    list.innerHTML = historyGroupHtml('Proposals', proposals) + historyGroupHtml('Invoices', invoices);
 
     list.querySelectorAll('.history-item').forEach(el => {
       el.querySelector('.history-item__body').onclick = () => {
@@ -930,12 +943,21 @@ async function refreshHistory() {
 
 /* ---------- Dashboard ---------- */
 let dashboardItems = [];
+let dashboardTypeFilter = 'all';
 
 function showDashboardModal() {
   $('dashboardModal').classList.add('modal--visible');
   $('dashboardSearch').value = '';
+  setDashboardTypeFilter('all');
   refreshDashboard();
   $('dashboardSearch').focus();
+}
+function setDashboardTypeFilter(type) {
+  dashboardTypeFilter = type;
+  document.querySelectorAll('.dashboard__tab').forEach((tab) => {
+    tab.classList.toggle('dashboard__tab--active', tab.dataset.type === type);
+  });
+  filterDashboard($('dashboardSearch').value);
 }
 function hideDashboardModal() {
   $('dashboardModal').classList.remove('modal--visible');
@@ -1002,10 +1024,18 @@ function renderDashboardGrid(items) {
 
 function filterDashboard(query) {
   const q = query.trim().toLowerCase();
-  if (!q) { renderDashboardGrid(dashboardItems); return; }
-  const filtered = dashboardItems.filter((p) => {
-    return [p.project_title, p.client_name, p.doc_number].some((v) => (v || '').toLowerCase().includes(q));
-  });
+  let filtered = dashboardItems;
+  if (dashboardTypeFilter !== 'all') {
+    filtered = filtered.filter((p) => {
+      const isInvoice = p.content && p.content.docType === 'invoice';
+      return dashboardTypeFilter === 'invoice' ? isInvoice : !isInvoice;
+    });
+  }
+  if (q) {
+    filtered = filtered.filter((p) => {
+      return [p.project_title, p.client_name, p.doc_number].some((v) => (v || '').toLowerCase().includes(q));
+    });
+  }
   renderDashboardGrid(filtered);
 }
 
@@ -1162,6 +1192,9 @@ function init() {
       if (e.target === $('dashboardModal')) hideDashboardModal();
     });
     $('dashboardSearch').addEventListener('input', (e) => filterDashboard(e.target.value));
+    document.querySelectorAll('.dashboard__tab').forEach((tab) => {
+      tab.addEventListener('click', () => setDashboardTypeFilter(tab.dataset.type));
+    });
     $('userMenuLogout').addEventListener('click', async () => {
       $('userMenuDropdown').hidden = true;
       await signOut();
