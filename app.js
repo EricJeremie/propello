@@ -248,7 +248,7 @@ async function generate() {
 
   const btn = $('generateBtn');
   btn.disabled = true;
-  setStatus('working', '<span class="spinner"></span>Reading the document and drafting all 10 sections… this can take 30–60s.');
+  setStatus('working', '<span class="spinner"></span>🤖 Reading the document and drafting all 10 sections… this can take 30–60s. ⏳');
 
   const userText =
     'Draft a PocketDevs proposal' + (pdfBase64 ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
@@ -336,7 +336,7 @@ async function generate() {
         refreshHistory();
       }
     } catch (e) { /* history is optional — ignore */ }
-    setStatus('ok', `Proposal generated. Click any text to edit, then <b>Download PDF</b>.`);
+    setStatus('ok', `🎉 Proposal generated! Click any text to edit, then <b>Download PDF</b>. 📥`);
   } catch (err) {
     setStatus('error', `Network error: ${esc(err.message)}.`);
   } finally {
@@ -649,7 +649,7 @@ async function handleAuth(e) {
       showToast(error.message, 'error');
     } else {
       const signedIn = !isSignUp || (data && data.session);
-      showToast(signedIn ? 'Welcome!' : 'Check your email to confirm sign up!', 'success');
+      showToast(signedIn ? '👋 Welcome!' : '📧 Check your email to confirm sign up!', 'success');
       hideAuthModal();
       updateAuthState();
     }
@@ -663,6 +663,12 @@ function greetingPhrase() {
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';
+}
+function greetingEmoji() {
+  const h = new Date().getHours();
+  if (h < 12) return '☀️';
+  if (h < 18) return '🌤️';
+  return '🌙';
 }
 
 async function updateAuthState() {
@@ -682,7 +688,7 @@ async function updateAuthState() {
       $('userMenuBtn').textContent = firstName.charAt(0).toUpperCase();
       $('userMenuBtn').title = displayName;
       greeting.hidden = false;
-      greeting.textContent = `${greetingPhrase()}, ${firstName}`;
+      greeting.textContent = `${greetingPhrase()}, ${firstName}! ${greetingEmoji()}`;
 
       refreshHistory();
     } else {
@@ -751,7 +757,7 @@ function downloadPDF() {
   };
   setStatus('working', '<span class="spinner"></span>Generating PDF file...');
   html2pdf().set(opt).from(element).save()
-    .then(() => setStatus('ok', 'PDF downloaded successfully.'))
+    .then(() => setStatus('ok', '📥 PDF downloaded successfully! 🎉'))
     .catch(err => setStatus('error', `PDF generation failed: ${err.message}`));
 }
 

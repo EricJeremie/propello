@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -38,7 +38,7 @@
     <aside class="composer no-print">
       <!-- Settings -->
       <section id="settingsPanel" class="card card--settings" hidden>
-        <h2 class="card__title">Logo</h2>
+        <h2 class="card__title">Logo 🎨</h2>
         <p class="card__hint">Upload your brand logo (used across the proposal). Stored only in this browser.</p>
         <div class="logo-row">
           <img id="logoPreview" class="logo-preview js-logo" src="assets/logo.svg" />
@@ -50,7 +50,7 @@
 
       <!-- Step 1 — Source -->
       <section class="card">
-        <div class="step"><span class="step__n">1</span><h2 class="card__title">Source document</h2></div>
+        <div class="step"><span class="step__n">1</span><h2 class="card__title">Source document 📄</h2></div>
         <label id="dropzone" class="dropzone" for="fileInput">
           <input id="fileInput" type="file" accept="application/pdf" hidden />
           <span class="dropzone__text"><strong>Drop a PDF</strong> or browse</span>
@@ -60,13 +60,13 @@
 
       <!-- History Section -->
       <section class="card history-card">
-        <div class="step"><span class="step__n">H</span><h2 class="card__title">My Proposals</h2></div>
+        <div class="step"><span class="step__n">H</span><h2 class="card__title">My Proposals 📚</h2></div>
         <div id="historyList" class="history-list"></div>
       </section>
 
       <!-- Step 2 — Details -->
       <section class="card">
-        <div class="step"><span class="step__n">2</span><h2 class="card__title">Proposal details</h2></div>
+        <div class="step"><span class="step__n">2</span><h2 class="card__title">Proposal details ✍️</h2></div>
         <p class="card__hint">Anchors the AI to real facts. Leave blank to let the AI propose — blanks render as <code>[TBD]</code>, never invented numbers.</p>
 
         <div class="grid2">
@@ -122,8 +122,8 @@
 
       <!-- Step 3 — Generate -->
       <section class="card">
-        <div class="step"><span class="step__n">3</span><h2 class="card__title">Generate</h2></div>
-        <button id="generateBtn" class="btn btn--primary btn--block">Generate proposal</button>
+        <div class="step"><span class="step__n">3</span><h2 class="card__title">Generate ⚡</h2></div>
+        <button id="generateBtn" class="btn btn--primary btn--block">✨ Generate proposal</button>
         <div id="status" class="status" hidden></div>
       </section>
     </aside>
@@ -181,8 +181,8 @@
         <article id="proposal" class="proposal">
           <label id="emptyState" class="empty" for="fileInput">
             <img src="assets/logo.svg" class="empty__logo js-logo" />
-            <h2>Your proposal will appear here</h2>
-            <p>Login, then drop a PDF here (or click to browse) and hit Generate.</p>
+            <h2>✨ Your proposal will appear here ✨</h2>
+            <p>🔐 Login, then 📄 drop a PDF here (or click to browse) and hit ⚡ Generate.</p>
           </label>
         </article>
       </div>
@@ -217,6 +217,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=4"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>
