@@ -794,9 +794,38 @@ function initDropzone() {
   }
 }
 
+function initDatePickers() {
+  document.querySelectorAll('.date-field__btn').forEach((btn) => {
+    const targetId = btn.dataset.target;
+    const textInput = $(targetId);
+    const picker = $(`${targetId}_picker`);
+    if (!textInput || !picker) return;
+
+    btn.addEventListener('click', () => {
+      const parsed = new Date(textInput.value);
+      if (!isNaN(parsed)) {
+        const yyyy = parsed.getFullYear();
+        const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+        const dd = String(parsed.getDate()).padStart(2, '0');
+        picker.value = `${yyyy}-${mm}-${dd}`;
+      }
+      if (typeof picker.showPicker === 'function') picker.showPicker();
+      else picker.click();
+    });
+
+    picker.addEventListener('change', () => {
+      if (!picker.value) return;
+      const [yyyy, mm, dd] = picker.value.split('-').map(Number);
+      const date = new Date(yyyy, mm - 1, dd);
+      textInput.value = date.toLocaleDateString(getLocale(), { year: 'numeric', month: 'long', day: 'numeric' });
+    });
+  });
+}
+
 function init() {
   try {
     initDropzone();
+    initDatePickers();
     applyLogo();
     autofillMeta();
     updateAuthState();

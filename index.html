@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -99,9 +99,21 @@
           </div>
           <div class="field"><label class="label">Total cost</label><input id="f_cost" class="input" placeholder="e.g. ₱ 250,000" /></div>
           <div class="field"><label class="label">Timeline</label><input id="f_timeline" class="input" placeholder="e.g. 8 weeks" /></div>
-          <div class="field"><label class="label">Valid until</label><input id="f_valid" class="input" placeholder="e.g. July 19, 2026" /></div>
+          <div class="field"><label class="label">Valid until</label>
+            <div class="date-field">
+              <input id="f_valid" class="input" placeholder="e.g. July 19, 2026" />
+              <button type="button" class="date-field__btn" data-target="f_valid" aria-label="Pick a date">📅</button>
+              <input type="date" id="f_valid_picker" class="date-field__picker" tabindex="-1" aria-hidden="true" />
+            </div>
+          </div>
           <div class="field"><label class="label">Document no.</label><input id="f_docno" class="input" /></div>
-          <div class="field"><label class="label">Prepared date</label><input id="f_date" class="input" /></div>
+          <div class="field"><label class="label">Prepared date</label>
+            <div class="date-field">
+              <input id="f_date" class="input" />
+              <button type="button" class="date-field__btn" data-target="f_date" aria-label="Pick a date">📅</button>
+              <input type="date" id="f_date_picker" class="date-field__picker" tabindex="-1" aria-hidden="true" />
+            </div>
+          </div>
           <div class="field field--full"><label class="label">Prepared by (signatory)</label><input id="f_signatory" class="input" value="Eric Jeremie Rotaquio" /></div>
           <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" value="Chief Executive Officer, PocketDevs" /></div>
         </div>
@@ -217,6 +229,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=5"></script>
+  <script type="module" src="app.js?v=6"></script>
 </body>
 </html>
