@@ -599,8 +599,12 @@ function setAuthMode(mode) {
   $('authTitle').textContent = isLogin ? 'Sign in to PocketDevs' : 'Create an account';
   $('authSubmit').textContent = isLogin ? 'Sign in' : 'Create account';
   $('authNameRow').hidden = isLogin;
-  $('authTabLogin').classList.toggle('auth-tab--active', isLogin);
-  $('authTabSignup').classList.toggle('auth-tab--active', !isLogin);
+  $('authTabLogin').classList.toggle('btn--primary', isLogin);
+  $('authTabLogin').classList.toggle('btn--ghost', !isLogin);
+  $('authTabLogin').setAttribute('aria-pressed', String(isLogin));
+  $('authTabSignup').classList.toggle('btn--primary', !isLogin);
+  $('authTabSignup').classList.toggle('btn--ghost', isLogin);
+  $('authTabSignup').setAttribute('aria-pressed', String(!isLogin));
 }
 
 async function handleAuth(e) {

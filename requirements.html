@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
   <link rel="stylesheet" href="requirements.css?v=1" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -119,9 +119,9 @@
     <div class="modal__content card">
       <button id="closeAuth" class="modal__close">&times;</button>
       <h2 class="card__title" id="authTitle">Sign in to PocketDevs</h2>
-      <div id="authTabs" class="auth-tabs">
-        <button id="authTabLogin" class="auth-tab auth-tab--active" type="button">Login</button>
-        <button id="authTabSignup" class="auth-tab" type="button">Sign up</button>
+      <div class="grid2" role="tablist">
+        <button id="authTabLogin" class="btn btn--primary" type="button" aria-pressed="true">Login</button>
+        <button id="authTabSignup" class="btn btn--ghost" type="button" aria-pressed="false">Sign up</button>
       </div>
       <form id="authForm" novalidate>
         <div class="field"><label class="label">Email</label><input id="authEmail" class="input" type="email" autocomplete="email" required /></div>
@@ -133,6 +133,6 @@
     </div>
   </div>
 
-  <script type="module" src="requirements.js?v=2"></script>
+  <script type="module" src="requirements.js?v=3"></script>
 </body>
 </html>
