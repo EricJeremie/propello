@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, signOut, onAuthChange, saveQuestionnaire, fetchSubmissionById } from './supabase.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, signOut, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js';
 import { initNav } from './nav.js';
 
 const REQ_API_URL = `${SUPABASE_URL}/functions/v1/generate-requirements`;
@@ -311,6 +311,7 @@ let answers = {};
 let currentQuestionIndex = 0;
 let isShareMode = false;
 let currentSubmissionId = null;
+let clientInviteOwnerId = null;
 
 function getActiveSteps() {
   return STEPS.filter((s) => !s.when || s.when(answers));
@@ -523,16 +524,22 @@ function showReview() {
   $('rqWizard').hidden = true;
   $('rqReview').hidden = false;
 
-  const shareUrl = buildShareUrl();
-  $('rqShareUrl').value = shareUrl;
-
   renderAnswersSummary();
 
-  if (isShareMode) {
+  if (clientInviteOwnerId) {
+    // A client filling via an invite link — they submit straight to the owner.
+    $('rqSharePanel').hidden = true;
+    $('rqStaffPanel').hidden = true;
+    $('rqSubmitPanel').hidden = false;
+    $('rqReviewTitle').textContent = 'Review your answers';
+    $('rqReviewSub').textContent = 'Take a quick look — you can edit anything before sending it to PocketDevs.';
+  } else if (isShareMode) {
     $('rqSharePanel').hidden = true;
     $('rqStaffPanel').hidden = false;
     $('rqReviewTitle').textContent = 'Client requirements summary';
     $('rqReviewSub').textContent = 'Review the client\'s answers below. You can edit any field, then generate the SRD.';
+  } else {
+    $('rqShareUrl').value = buildShareUrl();
   }
 }
 
@@ -579,6 +586,46 @@ function showWizard() {
   $('rqWizard').hidden = false;
   renderCurrentQuestion();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ---------- Client submit (via invite link) ---------- */
+async function submitClientAnswers() {
+  const btn = $('rqSubmitBtn');
+  const statusEl = $('rqSubmitStatus');
+  btn.disabled = true;
+  statusEl.className = 'status status--working';
+  statusEl.innerHTML = '<span class="spinner"></span> Sending your answers…';
+  statusEl.hidden = false;
+  try {
+    const { ok, error } = await submitClientQuestionnaire(clientInviteOwnerId, answers);
+    if (!ok) {
+      statusEl.className = 'status status--error';
+      statusEl.textContent = error || 'Submission failed. Please try again.';
+      btn.disabled = false;
+      return;
+    }
+    $('rqReview').hidden = true;
+    $('rqWizard').hidden = true;
+    $('rqThankYou').hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    statusEl.className = 'status status--error';
+    statusEl.textContent = 'Network error. Please try again.';
+    btn.disabled = false;
+  }
+}
+
+/* ---------- Invite a client (owner) ---------- */
+async function showInviteModal() {
+  const session = await getSession();
+  if (!session) { showAuthModal(); return; }
+  const base = `${window.location.origin}${window.location.pathname}`;
+  $('inviteUrl').value = `${base}?for=${session.user.id}`;
+  $('inviteModal').classList.add('modal--visible');
+  $('inviteUrl').select();
+}
+function hideInviteModal() {
+  $('inviteModal').classList.remove('modal--visible');
 }
 
 /* ---------- Share URL ---------- */
@@ -663,6 +710,7 @@ async function updateAuthState(session) {
   $('rqAuthBtn').hidden = isLoggedIn;
   $('rqUserMenu').hidden = !isLoggedIn;
   $('rqAuthGreeting').hidden = !isLoggedIn;
+  $('rqInviteBtn').hidden = !isLoggedIn || !!clientInviteOwnerId;
   if (isLoggedIn) {
     const name = session.user.user_metadata?.full_name || session.user.email || '';
     $('rqAuthGreeting').textContent = `Hi, ${name.split(' ')[0] || name}`;
@@ -869,8 +917,19 @@ function downloadPDF() {
 
 /* ---------- Init ---------- */
 async function init() {
-  // Check for ?submission=ID (from dashboard link)
   const urlParams = new URLSearchParams(window.location.search);
+
+  // Check for ?for=<ownerId> (a client filling the questionnaire via invite link)
+  const inviteOwnerId = urlParams.get('for');
+  if (inviteOwnerId) {
+    clientInviteOwnerId = inviteOwnerId;
+    document.body.classList.add('client-intake');
+    renderCurrentQuestion();
+    setupWiring();
+    return;
+  }
+
+  // Check for ?submission=ID (from dashboard link)
   const submissionId = urlParams.get('submission');
   if (submissionId) {
     await updateAuthState();
@@ -911,16 +970,30 @@ async function init() {
 }
 
 function setupWiring() {
-  initNav({ activePage: 'requirements' });
+  const clientMode = !!clientInviteOwnerId;
+  if (!clientMode) initNav({ activePage: 'requirements' });
+
   $('rqNextBtn').addEventListener('click', goNext);
   $('rqBackBtn').addEventListener('click', goBack);
   $('rqEditBtn').addEventListener('click', showWizard);
+  $('rqSubmitBtn').addEventListener('click', submitClientAnswers);
 
   $('rqCopyBtn').addEventListener('click', () => {
     const url = $('rqShareUrl').value;
     navigator.clipboard?.writeText(url).then(() => {
       $('rqCopyBtn').textContent = 'Copied!';
       setTimeout(() => { $('rqCopyBtn').textContent = 'Copy link'; }, 2000);
+    });
+  });
+
+  // Invite-a-client modal (owner)
+  $('rqInviteBtn').addEventListener('click', showInviteModal);
+  $('closeInvite').addEventListener('click', hideInviteModal);
+  $('inviteModal').addEventListener('click', (e) => { if (e.target === $('inviteModal')) hideInviteModal(); });
+  $('inviteCopyBtn').addEventListener('click', () => {
+    navigator.clipboard?.writeText($('inviteUrl').value).then(() => {
+      $('inviteCopyBtn').textContent = 'Copied!';
+      setTimeout(() => { $('inviteCopyBtn').textContent = 'Copy'; }, 2000);
     });
   });
 
@@ -954,8 +1027,9 @@ function setupWiring() {
 
   // Keyboard navigation (Typeform-style)
   document.addEventListener('keydown', (e) => {
-    // Never intercept keyboard events when the auth modal is open
+    // Never intercept keyboard events when a modal is open
     if ($('authModal').classList.contains('modal--visible')) return;
+    if ($('inviteModal').classList.contains('modal--visible')) return;
     if ($('rqWizard').hidden) return;
     const tag = e.target.tagName;
     const typing = tag === 'INPUT' || tag === 'TEXTAREA';
@@ -980,6 +1054,9 @@ function setupWiring() {
       goNext();
     }
   });
+
+  // Clients filling via an invite link don't need any account UI.
+  if (clientMode) return;
 
   // Optimistically hide the Login button if there's a stored session,
   // so the user doesn't see a flash while Supabase initializes.

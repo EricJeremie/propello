@@ -63,10 +63,12 @@ function renderGrid(items) {
       ? new Date(item.updated_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
       : '';
     const meta = [client, docNo].filter(Boolean).join(' · ');
+    const isNew = type === 'questionnaire' && item.status === 'submitted';
     return `
       <div class="doc-card" data-id="${item.id}" data-type="${type}">
         <button type="button" class="doc-card__delete" title="Delete document" aria-label="Delete document">&times;</button>
         <div class="doc-card__type doc-card__type--${type}">${TYPE_LABELS[type]}</div>
+        ${isNew ? '<div class="doc-card__new">New</div>' : ''}
         <div class="doc-card__thumb">
           <img src="assets/logo.svg" alt="PocketDevs" />
           <div class="doc-card__thumb-title">${title}</div>

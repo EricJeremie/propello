@@ -254,3 +254,23 @@ export async function fetchSubmissionById(id) {
     return null;
   }
 }
+
+/* Anonymous client submits a questionnaire to an owner via an invite link.
+   Goes through the submit-questionnaire edge function (service role insert),
+   so no client account is needed. Returns { ok } or { error }. */
+export async function submitClientQuestionnaire(ownerId, answers) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-questionnaire`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ ownerId, answers }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      return { error: (data && data.error && data.error.message) || `Submission failed (HTTP ${res.status}).` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message || 'Network error while submitting.' };
+  }
+}

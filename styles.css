@@ -114,6 +114,11 @@ button, input, textarea, select { font-family: inherit; }
 .doc-card__type--proposal { color: #1d4ed8; background: #dbeafe; }
 .doc-card__type--invoice { color: var(--rausch); background: var(--rausch-tint); }
 .doc-card__type--questionnaire { color: #15803d; background: #dcfce7; }
+.doc-card__new {
+  position: absolute; top: 0.5rem; right: 2rem; font-size: 0.625rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: #fff; background: var(--rausch);
+  border-radius: 5px; padding: 2px 6px; line-height: 1.4; z-index: 1;
+}
 .step { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
 .step .card__title { margin: 0; }
 .step__n {

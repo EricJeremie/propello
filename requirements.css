@@ -208,6 +208,29 @@
   border: 2px dashed var(--border);
   background: var(--bg-subtle);
 }
+
+/* Client intake mode (filling via an invite link) — hide owner-only chrome */
+body.client-intake .appbar__actions { display: none; }
+
+/* Client thank-you screen */
+.rq-thankyou {
+  max-width: 520px;
+  margin: 4rem auto;
+  text-align: center;
+  padding: 0 1rem;
+}
+.rq-thankyou__logo { height: 40px; margin-bottom: 1.75rem; }
+.rq-thankyou__title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 0.75rem;
+}
+.rq-thankyou__sub {
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
 .rq-share-row {
   display: flex;
   gap: 0.625rem;
