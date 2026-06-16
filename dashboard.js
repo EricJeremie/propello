@@ -132,13 +132,14 @@ function setFilter(type) {
   applyFilter();
 }
 
-async function updateAuthState() {
-  const session = await getSession();
+async function updateAuthState(session) {
+  if (session === undefined) session = await getSession();
   const loginPrompt = $('loginPrompt');
   const dashContent = $('dashContent');
   const authNavBtn = $('authNavBtn');
   const userMenu = $('userMenu');
   const greeting = $('authGreeting');
+  $('authLoading')?.remove();
 
   if (session) {
     const meta = session.user.user_metadata || {};
@@ -212,8 +213,7 @@ async function handleAuth(e) {
 }
 
 function init() {
-  updateAuthState();
-  onAuthChange(() => updateAuthState());
+  onAuthChange((session) => updateAuthState(session));
 
   document.querySelectorAll('.dash-page__tab').forEach(tab => {
     tab.addEventListener('click', () => setFilter(tab.dataset.type));

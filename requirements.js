@@ -652,8 +652,8 @@ async function handleAuth(e) {
   }
 }
 
-async function updateAuthState() {
-  const session = await getSession();
+async function updateAuthState(session) {
+  if (session === undefined) session = await getSession();
   const isLoggedIn = !!session;
   $('rqAuthBtn').hidden = isLoggedIn;
   $('rqUserMenu').hidden = !isLoggedIn;
@@ -973,8 +973,7 @@ function setupWiring() {
     }
   });
 
-  updateAuthState();
-  onAuthChange(() => updateAuthState());
+  onAuthChange((session) => updateAuthState(session));
 }
 
 init();

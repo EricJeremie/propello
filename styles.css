@@ -472,6 +472,10 @@ button, input, textarea, select { font-family: inherit; }
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; padding: 5rem 2rem; color: var(--text-muted);
 }
+.dash-page__loading {
+  display: flex; align-items: center; justify-content: center;
+  padding: 5rem 2rem; color: var(--text-muted); font-size: 0.9375rem;
+}
 .dash-page__login-logo { height: 36px; margin-bottom: 1.5rem; }
 .dash-page__login h2 { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 0.6rem; }
 .dash-page__login p { margin-bottom: 1.5rem; line-height: 1.6; max-width: 36ch; }

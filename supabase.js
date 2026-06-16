@@ -72,7 +72,10 @@ export async function signOut() {
 }
 
 export function onAuthChange(cb) {
-  getClient().then((sb) => { if (sb) sb.auth.onAuthStateChange((_evt, session) => cb(session)); });
+  getClient().then((sb) => {
+    if (!sb) { cb(null); return; }
+    sb.auth.onAuthStateChange((_evt, session) => cb(session));
+  });
 }
 
 /* ---------- Database Ops (best-effort; columns match the table) ---------- */
