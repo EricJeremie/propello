@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, signOut, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js';
 import { initLayout } from './nav.js';
 
 const REQ_API_URL = `${SUPABASE_URL}/functions/v1/generate-requirements`;
@@ -708,14 +708,11 @@ async function updateAuthState(session) {
   if (session === undefined) session = await getSession();
   const isLoggedIn = !!session;
   $('rqAuthBtn').hidden = isLoggedIn;
-  $('rqUserMenu').hidden = !isLoggedIn;
   $('rqAuthGreeting').hidden = !isLoggedIn;
   $('rqInviteBtn').hidden = !isLoggedIn || !!clientInviteOwnerId;
   if (isLoggedIn) {
     const name = session.user.user_metadata?.full_name || session.user.email || '';
     $('rqAuthGreeting').textContent = `Hi, ${name.split(' ')[0] || name}`;
-    const initials = name.split(' ').map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
-    $('rqUserMenuBtn').textContent = initials || 'U';
   }
 }
 
@@ -1006,24 +1003,6 @@ function setupWiring() {
   $('authTabLogin').addEventListener('click', () => setAuthMode('login'));
   $('authTabSignup').addEventListener('click', () => setAuthMode('signup'));
   $('authForm').addEventListener('submit', handleAuth);
-
-  $('rqUserMenuBtn')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const dd = $('rqUserMenuDropdown');
-    dd.hidden = !dd.hidden;
-  });
-  $('rqUserMenuLogout')?.addEventListener('click', async () => {
-    $('rqUserMenuDropdown').hidden = true;
-    await signOut();
-    updateAuthState();
-  });
-  document.addEventListener('click', (e) => {
-    const menu = $('rqUserMenu');
-    if (!menu?.hidden && !menu?.contains(e.target)) {
-      const dd = $('rqUserMenuDropdown');
-      if (dd) dd.hidden = true;
-    }
-  });
 
   // Keyboard navigation (Typeform-style)
   document.addEventListener('keydown', (e) => {

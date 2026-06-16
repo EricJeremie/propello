@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-import { getSession, signIn, signUp, signOut, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
+import { getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
 import { initLayout } from './nav.js';
 
 /* ---------- Constants ---------- */
@@ -859,7 +859,6 @@ async function updateAuthState() {
   try {
     const session = await getSession();
     const navBtn = $('authNavBtn');
-    const userMenu = $('userMenu');
     const greeting = $('authGreeting');
     if (session) {
       const fullName = (session.user.user_metadata && session.user.user_metadata.full_name) || '';
@@ -867,10 +866,6 @@ async function updateAuthState() {
       const firstName = displayName.trim().split(/\s+/)[0];
 
       navBtn.hidden = true;
-      $('settingsBtn').hidden = true;
-      userMenu.hidden = false;
-      $('userMenuBtn').textContent = firstName.charAt(0).toUpperCase();
-      $('userMenuBtn').title = displayName;
       greeting.hidden = false;
       greeting.textContent = `${greetingPhrase()}, ${firstName}!`;
 
@@ -893,9 +888,6 @@ async function updateAuthState() {
       navBtn.hidden = false;
       navBtn.textContent = 'Login';
       navBtn.onclick = showAuthModal;
-      $('settingsBtn').hidden = false;
-      userMenu.hidden = true;
-      $('userMenuDropdown').hidden = true;
       greeting.hidden = true;
       $('historyList').innerHTML = '<p class="card__hint">Login to see your history.</p>';
       $('openDashboardBtn').hidden = true;
@@ -1227,7 +1219,6 @@ function init() {
       },
     });
 
-    $('settingsBtn').addEventListener('click', () => { $('settingsPanel').hidden = !$('settingsPanel').hidden; });
     $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
     $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
     $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default logo.'); });
@@ -1247,21 +1238,6 @@ function init() {
     $('authTabLogin').addEventListener('click', () => setAuthMode('login'));
     $('authTabSignup').addEventListener('click', () => setAuthMode('signup'));
 
-    $('userMenuBtn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      const dd = $('userMenuDropdown');
-      const open = dd.hidden;
-      dd.hidden = !open;
-      $('userMenuBtn').setAttribute('aria-expanded', String(open));
-    });
-    $('userMenuSettings').addEventListener('click', () => {
-      $('settingsPanel').hidden = !$('settingsPanel').hidden;
-      $('userMenuDropdown').hidden = true;
-    });
-    $('userMenuDashboard').addEventListener('click', () => {
-      $('userMenuDropdown').hidden = true;
-      showDashboardModal();
-    });
     $('openDashboardBtn').addEventListener('click', showDashboardModal);
     $('closeDashboard').addEventListener('click', hideDashboardModal);
     $('dashboardModal').addEventListener('click', (e) => {
@@ -1270,15 +1246,6 @@ function init() {
     $('dashboardSearch').addEventListener('input', (e) => filterDashboard(e.target.value));
     document.querySelectorAll('.dashboard__tab').forEach((tab) => {
       tab.addEventListener('click', () => setDashboardTypeFilter(tab.dataset.type));
-    });
-    $('userMenuLogout').addEventListener('click', async () => {
-      $('userMenuDropdown').hidden = true;
-      await signOut();
-      updateAuthState();
-    });
-    document.addEventListener('click', (e) => {
-      const menu = $('userMenu');
-      if (!menu.hidden && !menu.contains(e.target)) $('userMenuDropdown').hidden = true;
     });
   } catch (err) {
     console.error('App initialization failed:', err);
