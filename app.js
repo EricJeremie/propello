@@ -1191,6 +1191,8 @@ function init() {
     autofillMeta();
     autofillInvoiceMeta();
     addLineItemRow();
+    // Wire Login button immediately — don't wait for the async session check
+    $('authNavBtn').addEventListener('click', showAuthModal);
     updateAuthState();
 
     $('settingsBtn').addEventListener('click', () => { $('settingsPanel').hidden = !$('settingsPanel').hidden; });
