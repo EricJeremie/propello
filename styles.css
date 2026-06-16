@@ -159,6 +159,7 @@ button, input, textarea, select { font-family: inherit; }
   padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem;
   font-weight: 600; cursor: pointer; transition: all 0.15s ease;
   border: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  text-decoration: none; color: inherit;
 }
 .btn[hidden] { display: none; }
 .btn--primary { background: var(--rausch); color: white; }
