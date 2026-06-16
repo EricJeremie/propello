@@ -1,6 +1,6 @@
 'use strict';
 
-import { initNav } from './nav.js';
+import { initLayout } from './nav.js';
 import {
   getSession, signIn, signUp, signOut, onAuthChange,
   fetchUserProposals, fetchUserQuestionnaires,
@@ -137,51 +137,28 @@ function setFilter(type) {
 
 async function updateAuthState(session) {
   if (session === undefined) session = await getSession();
-  const loginPrompt = $('loginPrompt');
-  const dashContent = $('dashContent');
-  const authNavBtn = $('authNavBtn');
-  const userMenu = $('userMenu');
-  const greeting = $('authGreeting');
-  $('authLoading')?.remove();
+
+  const authGate = $('authGate');
+  const appBody = $('appBody');
 
   if (session) {
-    const meta = session.user.user_metadata || {};
-    const name = meta.full_name || session.user.email || '';
-    const firstName = name.trim().split(/\s+/)[0];
-
-    authNavBtn.hidden = true;
-    userMenu.hidden = false;
-    $('userMenuBtn').textContent = firstName.charAt(0).toUpperCase();
-    $('userMenuBtn').title = name.trim();
-    greeting.hidden = false;
-    greeting.textContent = `Hi, ${firstName}!`;
-
-    loginPrompt.hidden = true;
-    dashContent.hidden = false;
+    // Hide auth gate, show app
+    if (authGate) authGate.hidden = true;
+    if (appBody) appBody.style.visibility = 'visible';
     loadAll();
   } else {
-    authNavBtn.hidden = false;
-    userMenu.hidden = true;
-    greeting.hidden = true;
-    loginPrompt.hidden = false;
-    dashContent.hidden = true;
+    // Show auth gate
+    if (authGate) authGate.hidden = false;
+    if (appBody) appBody.style.visibility = 'hidden';
   }
 }
 
 let authMode = 'login';
 
-function showAuthModal() {
-  $('authModal').classList.add('modal--visible');
-  $('authEmail').focus();
-}
-function hideAuthModal() {
-  $('authModal').classList.remove('modal--visible');
-}
 function setAuthMode(mode) {
   authMode = mode;
   const isLogin = mode === 'login';
-  $('authTitle').textContent = isLogin ? 'Sign in to PocketDevs' : 'Create an account';
-  $('authSubmit').textContent = isLogin ? 'Login' : 'Create account';
+  $('authSubmit').textContent = isLogin ? 'Log in' : 'Create account';
   $('authNameField').hidden = isLogin;
   $('authTabLogin').classList.toggle('btn--primary', isLogin);
   $('authTabLogin').classList.toggle('btn--ghost', !isLogin);
@@ -207,7 +184,6 @@ async function handleAuth(e) {
       errEl.textContent = error.message || String(error);
       errEl.hidden = false;
     } else {
-      hideAuthModal();
       updateAuthState(data?.session);
     }
   } catch (err) {
@@ -219,26 +195,27 @@ async function handleAuth(e) {
 }
 
 function init() {
-  initNav({ activePage: 'dashboard' });
+  // Show auth gate by default until we know auth state
+  const authGate = $('authGate');
+  const appBody = $('appBody');
 
-  // If no session token in storage, skip loading state and show login prompt immediately.
-  // If there is one, keep showing "Loading…" until Supabase confirms or times out.
+  // Fast pre-check: if no session token in storage, show auth gate immediately
   try {
-    const hasStored = Object.keys(localStorage).some((k) => k.includes('-auth-token'));
+    const hasStored = Object.keys(localStorage).some(k => k.includes('-auth-token'));
     if (!hasStored) {
-      $('authLoading')?.remove();
-      $('loginPrompt').hidden = false;
+      if (authGate) authGate.hidden = false;
+      if (appBody) appBody.style.visibility = 'hidden';
     }
   } catch { /* ignore */ }
 
-  // Fallback: if auth hasn't resolved in 6 s (CDN slow/failed), show login prompt.
-  setTimeout(() => {
-    const loading = $('authLoading');
-    if (loading) { loading.remove(); $('loginPrompt').hidden = false; }
-  }, 6000);
+  onAuthChange(session => updateAuthState(session));
 
-  onAuthChange((session) => updateAuthState(session));
+  // Auth gate form wiring
+  $('authTabLogin').addEventListener('click', () => setAuthMode('login'));
+  $('authTabSignup').addEventListener('click', () => setAuthMode('signup'));
+  $('authForm').addEventListener('submit', handleAuth);
 
+  // Tab/filter/search wiring
   document.querySelectorAll('.dash-page__tab').forEach(tab => {
     tab.addEventListener('click', () => setFilter(tab.dataset.type));
   });
@@ -247,30 +224,7 @@ function init() {
     applyFilter();
   });
 
-  $('authNavBtn').addEventListener('click', showAuthModal);
-  $('loginPromptBtn').addEventListener('click', showAuthModal);
-  $('closeAuth').addEventListener('click', hideAuthModal);
-  $('authModal').addEventListener('click', e => { if (e.target === $('authModal')) hideAuthModal(); });
-  $('authTabLogin').addEventListener('click', () => setAuthMode('login'));
-  $('authTabSignup').addEventListener('click', () => setAuthMode('signup'));
-  $('authForm').addEventListener('submit', handleAuth);
-
-  $('userMenuBtn').addEventListener('click', e => {
-    e.stopPropagation();
-    const dd = $('userMenuDropdown');
-    const open = dd.hidden;
-    dd.hidden = !open;
-    $('userMenuBtn').setAttribute('aria-expanded', String(open));
-  });
-  $('userMenuLogout').addEventListener('click', async () => {
-    $('userMenuDropdown').hidden = true;
-    await signOut();
-    updateAuthState();
-  });
-  document.addEventListener('click', e => {
-    const menu = $('userMenu');
-    if (!menu.hidden && !menu.contains(e.target)) $('userMenuDropdown').hidden = true;
-  });
+  initLayout({ activePage: 'dashboard' });
 }
 
 document.addEventListener('DOMContentLoaded', init);

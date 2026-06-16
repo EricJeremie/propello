@@ -1,5 +1,5 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, signOut, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js';
-import { initNav } from './nav.js';
+import { initLayout } from './nav.js';
 
 const REQ_API_URL = `${SUPABASE_URL}/functions/v1/generate-requirements`;
 
@@ -971,7 +971,7 @@ async function init() {
 
 function setupWiring() {
   const clientMode = !!clientInviteOwnerId;
-  if (!clientMode) initNav({ activePage: 'requirements' });
+  if (!clientMode) initLayout({ activePage: 'requirements' });
 
   $('rqNextBtn').addEventListener('click', goNext);
   $('rqBackBtn').addEventListener('click', goBack);

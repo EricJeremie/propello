@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="stylesheet" href="styles.css?v=19" />
   <link rel="stylesheet" href="requirements.css?v=3" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -21,8 +21,6 @@
       <span class="appbar__title">Requirements Questionnaire</span>
     </div>
     <div class="appbar__actions">
-      <a href="index.html" class="btn btn--ghost nav-link">Proposal Generator</a>
-      <a href="dashboard.html" class="btn btn--ghost nav-link">My Documents</a>
       <button id="rqInviteBtn" class="btn btn--primary" type="button" hidden>Invite a client</button>
       <span id="rqAuthGreeting" class="appbar__greeting" hidden></span>
       <button id="rqAuthBtn" class="btn btn--ghost nav-link">Login</button>
@@ -33,14 +31,10 @@
         </div>
       </div>
       <button id="rqDownloadBtn" class="btn btn--primary no-print" type="button" hidden>Download PDF</button>
-      <button id="hamburgerBtn" class="appbar__hamburger" type="button" aria-label="Open navigation menu">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      </button>
     </div>
   </header>
 
+  <div class="app-body">
   <main class="rq-main">
 
     <!-- ===== WIZARD ===== -->
@@ -128,6 +122,7 @@
     </div>
 
   </main>
+  </div><!-- /.app-body -->
 
   <!-- Auth Modal -->
   <div id="authModal" class="modal no-print">
@@ -161,6 +156,6 @@
     </div>
   </div>
 
-  <script type="module" src="requirements.js?v=8"></script>
+  <script type="module" src="requirements.js?v=9"></script>
 </body>
 </html>

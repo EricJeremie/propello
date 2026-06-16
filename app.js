@@ -6,7 +6,7 @@
 'use strict';
 
 import { getSession, signIn, signUp, signOut, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
-import { initNav } from './nav.js';
+import { initLayout } from './nav.js';
 
 /* ---------- Constants ---------- */
 const MODEL = 'gemini-2.5-flash';
@@ -1219,7 +1219,7 @@ function init() {
     else if (modeParam === 'proposal') setMode('proposal');
 
     const activeMode = modeParam === 'invoice' ? 'invoice' : 'proposal';
-    initNav({
+    initLayout({
       activePage: activeMode,
       onSettings: () => {
         const panel = $('settingsPanel');
