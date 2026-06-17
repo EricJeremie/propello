@@ -58,6 +58,11 @@
         <div class="step"><span class="step__n">2</span><h2 class="card__title">Proposal details</h2></div>
         <p class="card__hint">Anchors the AI to real facts. Leave blank to let the AI propose — blanks render as <code>[TBD]</code>, never invented numbers.</p>
 
+        <div class="field field--full">
+          <label class="label">Proposal name <span class="label__opt">(optional override)</span></label>
+          <input id="f_proposalName" class="input" placeholder="e.g. Web Development Proposal" />
+        </div>
+
         <div class="grid2">
           <div class="field"><label class="label">Client / company</label><input id="f_company" class="input" placeholder="Acme Inc." /></div>
           <div class="field"><label class="label">Project title</label><input id="f_title" class="input" placeholder="Website Redesign" /></div>
@@ -124,6 +129,11 @@
       <!-- Step 2 (Invoice) — Details -->
       <section class="card" data-mode="invoice" hidden>
         <div class="step"><span class="step__n">2</span><h2 class="card__title">Invoice details</h2></div>
+
+        <div class="field field--full">
+          <label class="label">Invoice name <span class="label__opt">(optional)</span></label>
+          <input id="f_inv_name" class="input" placeholder="e.g. Web Development Invoice" />
+        </div>
 
         <h3 class="card__subtitle">Bill to</h3>
         <div class="grid2">

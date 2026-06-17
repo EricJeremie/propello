@@ -226,6 +226,7 @@ function collectIntake() {
     notes: $('f_notes').value.trim(),
     budget: $('f_budget').value.trim(),
     paymentDetails: $('f_paymentDetails').value.trim(),
+    proposalName: $('f_proposalName').value.trim(),
   };
 }
 
@@ -243,6 +244,7 @@ function collectInvoiceIntake() {
     invoiceDate: $('f_inv_date').value.trim(),
     dueDate: $('f_inv_due').value.trim(),
     paymentDetails: $('f_inv_paymentDetails').value.trim(),
+    invoiceName: $('f_inv_name').value.trim(),
   };
 }
 
@@ -342,6 +344,7 @@ async function generate() {
     if (proposal.meta) {
       proposal.meta.budget = intake.budget || '';
       proposal.meta.paymentDetails = intake.paymentDetails || '';
+      if (intake.proposalName) proposal.meta.title = intake.proposalName;
     }
 
     render(proposal);
@@ -581,7 +584,7 @@ function renderInvoice(d) {
         </div>
       </div>
       <span class="p-kicker">Invoice</span>
-      <h1 class="p-title">Invoice</h1>
+      <h1 class="p-title">${esc(m.title || 'Invoice')}</h1>
       <div class="p-parties">
         <div class="p-party">
           <div class="p-party__label">Bill to</div>
@@ -636,7 +639,7 @@ async function generateInvoice() {
     docType: 'invoice',
     meta: {
       documentNumber: intake.invoiceNumber || '[TBD]',
-      title: `Invoice — ${intake.client || 'Client'}`,
+      title: intake.invoiceName || `Invoice — ${intake.client || 'Client'}`,
       invoiceDate: intake.invoiceDate,
       dueDate: intake.dueDate,
       currency: intake.currency,
