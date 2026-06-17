@@ -961,14 +961,24 @@ function downloadPDF() {
     margin: [15, 15],
     filename: `${docNo}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: pdfScale(element), useCORS: true, letterRendering: true, scrollX: 0, scrollY: -window.scrollY, windowWidth: document.documentElement.scrollWidth },
+    html2canvas: { scale: pdfScale(element), useCORS: true, letterRendering: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     // 'avoid-all' forces every element to avoid splitting; with the redesigned
     // page-spanning sections that left whole pages blank. 'css'+'legacy' lets
     // sections flow across pages, while `avoid` keeps small atomic blocks intact.
     pagebreak: { mode: ['css', 'legacy'], avoid: ['.p-subhead', '.p-table tr', '.p-cover'] },
   };
-  html2pdf().set(opt).from(element).save();
+  // If the page is scrolled when "Download PDF" is clicked, html2canvas's
+  // scrollY-compensation option doesn't reliably account for it (confirmed
+  // with html2pdf.js 0.10.1): the captured canvas ends up shifted, so the
+  // document's true start gets clipped off the top and an equal amount of
+  // blank space appears as empty pages at the end. Scrolling to the real
+  // top before capture — and restoring afterward — avoids that entirely.
+  const restoreY = window.scrollY;
+  window.scrollTo(0, 0);
+  html2pdf().set(opt).from(element).save()
+    .then(() => window.scrollTo(0, restoreY))
+    .catch(() => window.scrollTo(0, restoreY));
 }
 
 /* ---------- Rich text toolbar ---------- */
