@@ -371,7 +371,7 @@ button, input, textarea, select { font-family: inherit; }
 
 /* Proposal Paper */
 .paper-wrap {
-  width: 210mm; margin: 0 auto;
+  width: 210mm; max-width: 100%; margin: 0 auto;
   background: white; color: #1e293b;
   min-height: 297mm; padding: 20mm;
   box-shadow: 0 1px 3px rgb(20 22 26 / 0.08), 0 24px 60px rgb(20 22 26 / 0.12);

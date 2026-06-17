@@ -4,9 +4,24 @@
 
 /* ---- Layout ---- */
 .rq-main {
-  max-width: 720px;
-  margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
+}
+
+/* The wizard/review/thank-you steps read best as a narrow form column.
+   The SRD output is a full A4-proportioned document, so it gets its own
+   (wider) cap below — it must never inherit this 720px constraint. */
+#rqWizard,
+#rqReview,
+#rqThankYou {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#rqSRDSection {
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ---- Hero ---- */

@@ -1096,7 +1096,7 @@ function downloadPDF() {
     margin: [15, 15],
     filename: `${docNo}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+    html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollX: 0, scrollY: -window.scrollY, windowWidth: document.documentElement.scrollWidth },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
