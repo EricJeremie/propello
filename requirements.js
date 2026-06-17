@@ -939,6 +939,21 @@ function renderSRD(srd) {
 }
 
 /* ---------- PDF Download ---------- */
+// html2canvas rasterizes the ENTIRE document into a single canvas before
+// jsPDF slices it into pages. Browsers cap canvas size — Chrome at ~16384px
+// per side, Safari/iOS at ~16.7M px² total area — and when a long, detailed
+// SRD at scale:2 exceeds those caps, the canvas comes back completely BLANK,
+// producing an all-blank PDF. pdfScale() lowers the render scale just enough
+// to keep the canvas within a safe cross-browser budget (full scale:2 quality
+// for normal-length docs, gracefully reduced only for very long ones).
+function pdfScale(element) {
+  const w = element.scrollWidth || 800;
+  const h = element.scrollHeight || 1000;
+  const MAX_DIM = 16000;             // under Chrome's 16384px-per-side hard cap
+  const MAX_AREA = 16 * 1000 * 1000; // under Safari/iOS's ~16.7M px² area cap
+  let scale = Math.min(2, MAX_DIM / w, MAX_DIM / h, Math.sqrt(MAX_AREA / (w * h)));
+  return Math.max(0.5, scale);
+}
 function downloadPDF() {
   const element = $('rqSRD');
   const docNo = document.querySelector('#rqSRD .js-doc-no')?.innerText?.trim() || 'SRD';
@@ -946,9 +961,12 @@ function downloadPDF() {
     margin: [15, 15],
     filename: `${docNo}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollX: 0, scrollY: -window.scrollY, windowWidth: document.documentElement.scrollWidth },
+    html2canvas: { scale: pdfScale(element), useCORS: true, letterRendering: true, scrollX: 0, scrollY: -window.scrollY, windowWidth: document.documentElement.scrollWidth },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+    // 'avoid-all' forces every element to avoid splitting; with the redesigned
+    // page-spanning sections that left whole pages blank. 'css'+'legacy' lets
+    // sections flow across pages, while `avoid` keeps small atomic blocks intact.
+    pagebreak: { mode: ['css', 'legacy'], avoid: ['.p-subhead', '.p-table tr', '.p-cover'] },
   };
   html2pdf().set(opt).from(element).save();
 }
