@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-import { getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase.js';
+import { getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword } from './supabase.js';
 import { initLayout } from './nav.js';
 
 /* ---------- Constants ---------- */
@@ -785,6 +785,176 @@ async function generateInvoice() {
   editor.addEventListener('focus', updateToolbarState);
 })();
 
+/* ---------- Settings Modal ---------- */
+const LS_AVATAR = 'pdv_avatar';
+
+function showSettingsModal() {
+  populateSettings();
+  $('settingsModal').classList.add('modal--visible');
+}
+function hideSettingsModal() {
+  $('settingsModal').classList.remove('modal--visible');
+}
+
+function openSettingsTab(tab) {
+  document.querySelectorAll('.settings-tab').forEach((btn) => {
+    btn.classList.toggle('settings-tab--active', btn.dataset.tab === tab);
+  });
+  ['Profile', 'Security', 'Branding'].forEach((name) => {
+    const el = $(`settingsTab${name}`);
+    if (el) el.hidden = name.toLowerCase() !== tab;
+  });
+}
+
+async function populateSettings() {
+  openSettingsTab('profile');
+  const session = await getSession();
+
+  // Profile tab
+  const profileGate = $('settingsProfileGate');
+  const profileForm = $('settingsProfileForm');
+  if (!session) {
+    profileGate.hidden = false;
+    profileForm.hidden = true;
+  } else {
+    profileGate.hidden = true;
+    profileForm.hidden = false;
+    const meta = session.user.user_metadata || {};
+    $('settingsName').value = meta.full_name || '';
+    $('settingsEmail').value = session.user.email || '';
+    applySettingsAvatar();
+  }
+
+  // Security tab
+  const secGate = $('settingsSecurityGate');
+  const secForm = $('settingsSecurityForm');
+  if (!session) {
+    secGate.hidden = false;
+    secForm.hidden = true;
+  } else {
+    secGate.hidden = true;
+    secForm.hidden = false;
+  }
+
+  // Clear status banners
+  ['settingsProfileStatus', 'settingsEmailStatus', 'settingsSecurityStatus'].forEach((id) => {
+    const el = $(id);
+    el.hidden = true;
+    el.textContent = '';
+    el.className = 'status';
+  });
+  $('settingsNewPassword').value = '';
+  $('settingsConfirmPassword').value = '';
+}
+
+function applySettingsAvatar() {
+  const src = localStorage.getItem(LS_AVATAR);
+  const img = $('settingsAvatarImg');
+  const initials = $('settingsAvatarInitials');
+  const removeBtn = $('settingsAvatarRemoveBtn');
+  if (src) {
+    img.src = src;
+    img.hidden = false;
+    initials.hidden = true;
+    removeBtn.hidden = false;
+  } else {
+    img.hidden = true;
+    initials.hidden = false;
+    removeBtn.hidden = true;
+    const session_cached = $('settingsName').value.trim() || '?';
+    initials.textContent = session_cached.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  }
+  applySidebarAvatar();
+}
+
+function applySidebarAvatar() {
+  const src = localStorage.getItem(LS_AVATAR);
+  const el = document.getElementById('sidebarAvatar');
+  if (!el) return;
+  if (src) {
+    el.innerHTML = `<img src="${src}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+  } else {
+    // Restore initials (already set by nav.js; only overwrite if we previously injected an img)
+    if (el.querySelector('img')) {
+      const name = $('settingsName')?.value.trim() || '';
+      el.textContent = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+    }
+  }
+}
+
+function setSettingsStatus(id, type, msg) {
+  const el = $(id);
+  el.className = `status status--${type}`;
+  el.textContent = msg;
+  el.hidden = false;
+}
+
+async function handleAvatarUpload(file) {
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { setSettingsStatus('settingsProfileStatus', 'error', 'Photo must be under 2 MB.'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem(LS_AVATAR, String(reader.result));
+    applySettingsAvatar();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function handleSaveProfile() {
+  const btn = $('saveProfileBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  const fullName = $('settingsName').value.trim();
+  const { error } = await updateUserProfile({ fullName });
+  btn.disabled = false;
+  btn.textContent = 'Save profile';
+  if (error) {
+    setSettingsStatus('settingsProfileStatus', 'error', error.message || 'Could not save profile.');
+  } else {
+    setSettingsStatus('settingsProfileStatus', 'ok', 'Profile saved.');
+    // Refresh sidebar name/initials
+    const sidebarName = document.getElementById('sidebarUserName');
+    if (sidebarName) sidebarName.textContent = fullName;
+    applySettingsAvatar();
+  }
+}
+
+async function handleSaveEmail() {
+  const btn = $('saveEmailBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const newEmail = $('settingsEmail').value.trim();
+  if (!newEmail) { setSettingsStatus('settingsEmailStatus', 'error', 'Enter a valid email address.'); btn.disabled = false; btn.textContent = 'Update email'; return; }
+  const { error } = await updateUserEmail(newEmail);
+  btn.disabled = false;
+  btn.textContent = 'Update email';
+  if (error) {
+    setSettingsStatus('settingsEmailStatus', 'error', error.message || 'Could not update email.');
+  } else {
+    setSettingsStatus('settingsEmailStatus', 'ok', 'Confirmation email sent — check your inbox to verify the new address.');
+  }
+}
+
+async function handleSavePassword() {
+  const btn = $('savePasswordBtn');
+  const newPw = $('settingsNewPassword').value;
+  const confirmPw = $('settingsConfirmPassword').value;
+  if (newPw.length < 6) { setSettingsStatus('settingsSecurityStatus', 'error', 'Password must be at least 6 characters.'); return; }
+  if (newPw !== confirmPw) { setSettingsStatus('settingsSecurityStatus', 'error', 'Passwords do not match.'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Updating…';
+  const { error } = await updateUserPassword(newPw);
+  btn.disabled = false;
+  btn.textContent = 'Update password';
+  if (error) {
+    setSettingsStatus('settingsSecurityStatus', 'error', error.message || 'Could not update password.');
+  } else {
+    setSettingsStatus('settingsSecurityStatus', 'ok', 'Password updated successfully.');
+    $('settingsNewPassword').value = '';
+    $('settingsConfirmPassword').value = '';
+  }
+}
+
 /* ---------- Auth Modal ---------- */
 function showAuthModal() {
   setAuthMode('login');
@@ -1239,15 +1409,34 @@ function init() {
     const activeMode = modeParam === 'invoice' ? 'invoice' : 'proposal';
     initLayout({
       activePage: activeMode,
-      onSettings: () => {
-        const panel = $('settingsPanel');
-        panel.hidden = !panel.hidden;
-      },
+      onSettings: showSettingsModal,
     });
 
+    // Settings modal wiring
+    $('closeSettings').addEventListener('click', hideSettingsModal);
+    $('settingsModal').addEventListener('click', (e) => { if (e.target === $('settingsModal')) hideSettingsModal(); });
+    document.querySelectorAll('.settings-tab').forEach((btn) => {
+      btn.addEventListener('click', () => openSettingsTab(btn.dataset.tab));
+    });
+    $('settingsAvatarUploadBtn').addEventListener('click', () => $('settingsAvatarInput').click());
+    $('settingsAvatarInput').addEventListener('change', (e) => handleAvatarUpload(e.target.files[0]));
+    $('settingsAvatarRemoveBtn').addEventListener('click', () => {
+      localStorage.removeItem(LS_AVATAR);
+      applySettingsAvatar();
+    });
+    $('saveProfileBtn').addEventListener('click', handleSaveProfile);
+    $('saveEmailBtn').addEventListener('click', handleSaveEmail);
+    $('savePasswordBtn').addEventListener('click', handleSavePassword);
+    $('settingsSignInBtn').addEventListener('click', () => { hideSettingsModal(); showAuthModal(); });
+    $('settingsSecuritySignInBtn').addEventListener('click', () => { hideSettingsModal(); showAuthModal(); });
+
+    // Branding tab logo controls (same IDs as before, now inside settings modal)
     $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
     $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
-    $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); setStatus('ok', 'Reverted to the default logo.'); });
+    $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); });
+
+    // Apply stored avatar on load
+    applySidebarAvatar();
     $('f_locale').addEventListener('change', () => { $('f_date').value = formatToday(); });
     $('f_inv_locale').addEventListener('change', () => { $('f_inv_date').value = new Date().toLocaleDateString(getLocale('f_inv_locale'), { year: 'numeric', month: 'long', day: 'numeric' }); });
     $('f_inv_currency').addEventListener('change', updateInvoiceTotal);

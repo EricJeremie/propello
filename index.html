@@ -36,18 +36,6 @@
   <div class="app-body">
   <main class="layout">
     <aside class="composer no-print">
-      <!-- Settings -->
-      <section id="settingsPanel" class="card card--settings" hidden>
-        <h2 class="card__title">Logo</h2>
-        <p class="card__hint">Upload your brand logo (used across the proposal). Stored only in this browser.</p>
-        <div class="logo-row">
-          <img id="logoPreview" class="logo-preview js-logo" src="assets/logo.svg" />
-          <input id="logoInput" type="file" accept="image/*" hidden />
-          <button id="logoUploadBtn" class="btn btn--primary btn--sm">Upload</button>
-          <button id="logoResetBtn" class="btn btn--ghost btn--sm">Reset</button>
-        </div>
-      </section>
-
       <!-- Step 1 — Source -->
       <section class="card" data-mode="proposal">
         <div class="step"><span class="step__n">1</span><h2 class="card__title">Source document</h2></div>
@@ -293,6 +281,88 @@
         <input id="dashboardSearch" class="input dashboard__search" type="search" placeholder="Search by title, client, or doc no." />
       </div>
       <div id="dashboardGrid" class="dashboard__grid"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal no-print">
+    <div class="modal__content modal__content--settings card">
+      <button id="closeSettings" class="modal__close" aria-label="Close">&times;</button>
+      <h2 class="card__title">Settings</h2>
+
+      <div class="settings-tabs" role="tablist">
+        <button type="button" class="settings-tab settings-tab--active" data-tab="profile" role="tab">Profile</button>
+        <button type="button" class="settings-tab" data-tab="security" role="tab">Security</button>
+        <button type="button" class="settings-tab" data-tab="branding" role="tab">Branding</button>
+      </div>
+
+      <!-- Profile tab -->
+      <div id="settingsTabProfile" class="settings-panel">
+        <div id="settingsProfileGate" hidden>
+          <p class="card__hint" style="margin-bottom:1rem;">Sign in to manage your profile.</p>
+          <button type="button" id="settingsSignInBtn" class="btn btn--primary btn--block">Sign In</button>
+        </div>
+        <div id="settingsProfileForm">
+          <div class="settings-avatar-row">
+            <div class="settings-avatar" id="settingsAvatarEl">
+              <span id="settingsAvatarInitials">?</span>
+              <img id="settingsAvatarImg" src="" alt="Avatar" hidden />
+            </div>
+            <div class="settings-avatar-actions">
+              <button type="button" id="settingsAvatarUploadBtn" class="btn btn--ghost btn--sm">Change photo</button>
+              <button type="button" id="settingsAvatarRemoveBtn" class="btn btn--ghost btn--sm" hidden>Remove</button>
+              <input id="settingsAvatarInput" type="file" accept="image/*" hidden />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Full name</label>
+            <input id="settingsName" type="text" class="input" placeholder="Your full name" autocomplete="name" />
+          </div>
+          <div id="settingsProfileStatus" class="status" hidden></div>
+          <button type="button" id="saveProfileBtn" class="btn btn--primary btn--block">Save profile</button>
+          <hr class="rule" />
+          <div class="field">
+            <label class="label">Email address</label>
+            <input id="settingsEmail" type="email" class="input" autocomplete="email" />
+          </div>
+          <div id="settingsEmailStatus" class="status" hidden></div>
+          <button type="button" id="saveEmailBtn" class="btn btn--ghost btn--block">Update email</button>
+        </div>
+      </div>
+
+      <!-- Security tab -->
+      <div id="settingsTabSecurity" class="settings-panel" hidden>
+        <div id="settingsSecurityGate" hidden>
+          <p class="card__hint" style="margin-bottom:1rem;">Sign in to change your password.</p>
+          <button type="button" id="settingsSecuritySignInBtn" class="btn btn--primary btn--block">Sign In</button>
+        </div>
+        <div id="settingsSecurityForm">
+          <div class="field">
+            <label class="label">New password</label>
+            <input id="settingsNewPassword" type="password" class="input" placeholder="Minimum 6 characters" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label class="label">Confirm new password</label>
+            <input id="settingsConfirmPassword" type="password" class="input" autocomplete="new-password" />
+          </div>
+          <div id="settingsSecurityStatus" class="status" hidden></div>
+          <button type="button" id="savePasswordBtn" class="btn btn--primary btn--block">Update password</button>
+        </div>
+      </div>
+
+      <!-- Branding tab -->
+      <div id="settingsTabBranding" class="settings-panel" hidden>
+        <div class="field">
+          <label class="label">Brand logo</label>
+          <p class="card__hint">Used on proposals. Stored in this browser only.</p>
+          <div class="logo-row">
+            <img id="logoPreview" class="logo-preview js-logo" src="assets/logo.svg" />
+            <input id="logoInput" type="file" accept="image/*" hidden />
+            <button id="logoUploadBtn" class="btn btn--primary btn--sm">Upload</button>
+            <button id="logoResetBtn" class="btn btn--ghost btn--sm">Reset</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

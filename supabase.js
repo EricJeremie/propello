@@ -258,6 +258,32 @@ export async function fetchSubmissionById(id) {
 /* Anonymous client submits a questionnaire to an owner via an invite link.
    Goes through the submit-questionnaire edge function (service role insert),
    so no client account is needed. Returns { ok } or { error }. */
+/* ---------- User Account Updates ---------- */
+
+export async function updateUserProfile({ fullName, avatarDataUrl } = {}) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline — cannot update profile.' } };
+  const data = {};
+  if (fullName !== undefined) data.full_name = fullName;
+  if (avatarDataUrl !== undefined) data.avatar_url = avatarDataUrl;
+  try { return await sb.auth.updateUser({ data }); }
+  catch (err) { return { error: { message: err.message || 'Profile update failed.' } }; }
+}
+
+export async function updateUserEmail(newEmail) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline — cannot update email.' } };
+  try { return await sb.auth.updateUser({ email: newEmail }); }
+  catch (err) { return { error: { message: err.message || 'Email update failed.' } }; }
+}
+
+export async function updateUserPassword(newPassword) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline — cannot update password.' } };
+  try { return await sb.auth.updateUser({ password: newPassword }); }
+  catch (err) { return { error: { message: err.message || 'Password update failed.' } }; }
+}
+
 export async function submitClientQuestionnaire(ownerId, answers) {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/submit-questionnaire`, {
