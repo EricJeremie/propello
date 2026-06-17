@@ -366,6 +366,56 @@ body.client-intake .appbar__actions { display: none; }
 .p-scope-split__head--out { background: #fee2e2; color: #b91c1c; }
 .p-list--inline { margin-left: 0; }
 
+/* ---- IEEE-style SRD subsections (e.g. "1.1 Purpose") ---- */
+.p-subhead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 1.25rem 0 0.5rem;
+}
+.p-subhead__num {
+  font-weight: 700;
+  color: var(--rausch);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.p-subhead__title {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 0.92rem;
+}
+.p-section__intro { color: #64748b; font-size: 0.82rem; margin: 0 0 0.75rem; }
+
+/* ---- FR-x / NFR-x requirement rows ---- */
+.p-req-list li { padding-left: 0; }
+.p-req-list li::before { content: none; }
+.p-req__id {
+  display: inline-block;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.72rem;
+  margin-right: 0.45rem;
+  white-space: nowrap;
+}
+.p-req__tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 99px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.p-req__tag--must { background: #fee2e2; color: #b91c1c; }
+.p-req__tag--should { background: #fef9c3; color: #92400e; }
+.p-req__tag--could { background: #dbeafe; color: #1d4ed8; }
+
 /* ============================================================
    Typeform-style wizard — one question per screen
    ============================================================ */

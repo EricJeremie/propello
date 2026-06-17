@@ -657,7 +657,7 @@ button, input, textarea, select { font-family: inherit; }
   .layout { display: block; }
   .stage { padding: 0; background: white; }
   .paper-wrap { box-shadow: none; margin: 0; width: 100%; min-height: 0; padding: 0; }
-  .p-section, .p-scope__group, .p-term, .p-sign, .p-party { break-inside: avoid; }
+  .p-section, .p-scope__group, .p-term, .p-sign, .p-party, .p-subhead { break-inside: avoid; }
   .p-table tr { break-inside: avoid; }
 }
 
