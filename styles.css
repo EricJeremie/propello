@@ -66,15 +66,6 @@ button, input, textarea, select { font-family: inherit; }
 .card__hint { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5; }
 .card__hint code { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 0.6875rem; }
 
-/* Mode tabs */
-.mode-tabs { display: flex; gap: 0.4rem; padding: 0.25rem; background: var(--bg-subtle); border-radius: 10px; }
-.mode-tab {
-  flex: 1; padding: 0.5rem; border: none; border-radius: 8px; background: transparent;
-  font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.mode-tab:hover { color: var(--text); }
-.mode-tab--active { background: var(--bg-card); color: var(--text); box-shadow: var(--shadow); }
 .card__subtitle {
   font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
   color: var(--text-muted); margin: 1rem 0 0.5rem;

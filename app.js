@@ -1252,8 +1252,6 @@ function init() {
     $('f_inv_locale').addEventListener('change', () => { $('f_inv_date').value = new Date().toLocaleDateString(getLocale('f_inv_locale'), { year: 'numeric', month: 'long', day: 'numeric' }); });
     $('f_inv_currency').addEventListener('change', updateInvoiceTotal);
 
-    $('modeTabProposal').addEventListener('click', () => setMode('proposal'));
-    $('modeTabInvoice').addEventListener('click', () => setMode('invoice'));
     $('addItemBtn').addEventListener('click', () => addLineItemRow());
 
     $('generateBtn').addEventListener('click', generate);
