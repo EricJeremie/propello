@@ -325,6 +325,11 @@ let currentQuestionIndex = 0;
 let isShareMode = false;
 let currentSubmissionId = null;
 let clientInviteOwnerId = null;
+// undefined = not resolved yet, null = confirmed logged out, object = logged in.
+// Always updated via updateAuthState()/onAuthChange — never re-fetched with a
+// fresh getSession() call at click-time, since that races with the Supabase
+// client's session-recovery-from-storage on a freshly loaded page.
+let currentSession;
 
 function getActiveSteps() {
   return STEPS.filter((s) => !s.when || s.when(answers));
@@ -630,7 +635,7 @@ async function submitClientAnswers() {
 
 /* ---------- Invite a client (owner) ---------- */
 async function showInviteModal() {
-  const session = await getSession();
+  const session = currentSession !== undefined ? currentSession : await getSession();
   if (!session) { showAuthModal(); return; }
   const base = `${window.location.origin}${window.location.pathname}`;
   $('inviteUrl').value = `${base}?for=${session.user.id}`;
@@ -719,6 +724,7 @@ async function handleAuth(e) {
 
 async function updateAuthState(session) {
   if (session === undefined) session = await getSession();
+  currentSession = session;
   const isLoggedIn = !!session;
   $('rqAuthBtn').hidden = isLoggedIn;
   $('rqAuthGreeting').hidden = !isLoggedIn;
@@ -739,7 +745,7 @@ function setStatus(kind, html) {
 
 /* ---------- Generate SRD ---------- */
 async function generateSRD() {
-  const session = await getSession();
+  const session = currentSession !== undefined ? currentSession : await getSession();
   if (!session || !session.access_token) {
     showAuthModal();
     setStatus('error', 'Please sign in to generate the SRD.');
