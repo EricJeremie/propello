@@ -730,9 +730,19 @@ async function updateAuthState(session) {
   $('rqAuthGreeting').hidden = !isLoggedIn;
   $('rqInviteBtn').hidden = !isLoggedIn || !!clientInviteOwnerId;
   if (isLoggedIn) {
-    const name = session.user.user_metadata?.full_name || session.user.email || '';
-    $('rqAuthGreeting').textContent = `Hi, ${name.split(' ')[0] || name}`;
+    const fullName = (session.user.user_metadata?.full_name || '').trim();
+    const displayName = fullName || (session.user.email || '').split('@')[0];
+    const firstName = displayName.split(/\s+/)[0] || displayName;
+    $('rqAuthGreeting').textContent = `${greetingPhrase()}, ${firstName}!`;
   }
+}
+
+// Matches the Proposal/Invoice generator's time-of-day greeting (app.js).
+function greetingPhrase() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
 /* ---------- Status helper ---------- */

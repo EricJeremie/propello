@@ -181,7 +181,11 @@ button, input, textarea, select { font-family: inherit; }
 .dot--ok { background: #10b981; }
 
 /* Greeting + user menu */
-.appbar__greeting { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); margin-right: 0.25rem; white-space: nowrap; }
+.appbar__greeting { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+/* The greeting now leads the appbar brand (where the logo used to be), followed
+   by a divider and the page title. When logged out the greeting is [hidden], so
+   collapse the now-orphaned leading divider too. */
+.appbar__greeting[hidden] + .appbar__divider { display: none; }
 .user-menu { position: relative; }
 .user-menu__avatar {
   width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
@@ -541,7 +545,9 @@ button, input, textarea, select { font-family: inherit; }
 .app-sidebar__logo { height: 24px; display: block; }
 
 .app-sidebar__collapse-btn {
-  position: absolute; top: 18px; left: 226px;
+  /* Fixed (not absolute) so it isn't clipped by the sidebar's overflow-y:auto
+     box — it straddles the sidebar's right edge and floats over the appbar. */
+  position: fixed; top: 18px; left: 226px;
   width: 24px; height: 24px; border-radius: 50%;
   background: var(--bg-card); border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;

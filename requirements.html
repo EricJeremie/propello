@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=22" />
+  <link rel="stylesheet" href="styles.css?v=23" />
   <link rel="stylesheet" href="requirements.css?v=5" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
@@ -16,13 +16,12 @@
 
   <header class="appbar no-print">
     <div class="appbar__brand">
-      <img src="assets/logo.svg" alt="PocketDevs" class="appbar__logo" />
+      <span id="rqAuthGreeting" class="appbar__greeting" hidden></span>
       <span class="appbar__divider"></span>
       <span class="appbar__title">Requirements Questionnaire</span>
     </div>
     <div class="appbar__actions">
       <button id="rqInviteBtn" class="btn btn--primary" type="button" hidden>Invite a client</button>
-      <span id="rqAuthGreeting" class="appbar__greeting" hidden></span>
       <button id="rqAuthBtn" class="btn btn--ghost nav-link">Login</button>
       <button id="rqDownloadBtn" class="btn btn--primary no-print" type="button" hidden>Download PDF</button>
     </div>
@@ -150,6 +149,6 @@
     </div>
   </div>
 
-  <script type="module" src="requirements.js?v=15"></script>
+  <script type="module" src="requirements.js?v=16"></script>
 </body>
 </html>
