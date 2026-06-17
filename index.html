@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=25" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -29,6 +29,10 @@
     </div>
     <div class="appbar__actions">
       <button id="authNavBtn" class="btn btn--ghost nav-link">Login</button>
+      <button id="shareBtn" class="btn btn--ghost" type="button" hidden>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        <span id="shareBtnLabel">Share</span>
+      </button>
       <button id="downloadBtn" class="btn btn--primary" type="button" disabled>Download PDF</button>
     </div>
   </header>
@@ -214,6 +218,11 @@
     </aside>
 
     <div class="stage">
+      <div id="collabBanner" class="collab-banner no-print" hidden>
+        <span class="collab-banner__dot"></span>
+        <span class="collab-banner__text">Live shared document — your edits sync automatically.</span>
+        <span id="collabBannerPresence" class="collab-banner__presence"></span>
+      </div>
       <div id="editorToolbar" class="editor-toolbar no-print" hidden>
         <select class="editor-toolbar__select" data-cmd="formatBlock" title="Heading">
           <option value="P">Paragraph</option>
@@ -376,6 +385,22 @@
     </div>
   </div>
 
+  <!-- Share Modal -->
+  <div id="shareModal" class="modal no-print">
+    <div class="modal__content card">
+      <button id="closeShare" class="modal__close" aria-label="Close">&times;</button>
+      <h2 class="card__title">Share &amp; collaborate</h2>
+      <p class="card__hint">Anyone with this link can open and edit this document with you in real time. No account needed — changes sync automatically.</p>
+      <div class="share-link-row">
+        <input id="shareLinkInput" class="input" readonly />
+        <button id="shareCopyBtn" class="btn btn--primary btn--sm" type="button">Copy</button>
+      </div>
+      <div class="share-presence"><span class="collab-banner__dot"></span><span id="collabPresence">Just you so far</span></div>
+      <hr class="rule" />
+      <button id="stopSharingBtn" class="btn btn--ghost btn--block" type="button">Stop sharing</button>
+    </div>
+  </div>
+
   <!-- Auth Modal — kept as a direct child of <body> so its fixed overlay
        always covers the full viewport (never trapped by the sticky sidebar). -->
   <div id="authModal" class="modal no-print">
@@ -405,6 +430,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=20"></script>
+  <script type="module" src="app.js?v=21"></script>
 </body>
 </html>

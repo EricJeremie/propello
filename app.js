@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-import { getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword } from './supabase.js';
+import { getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js';
 import { initLayout } from './nav.js';
 
 /* ---------- Constants ---------- */
@@ -348,12 +348,14 @@ async function generate() {
     }
 
     render(proposal);
+    setActiveDoc({ id: null, content: proposal, token: null });
     // Best-effort save to history (we're signed in; never blocks the result).
     try {
-      const { error: saveErr } = await saveProposal(proposal);
+      const { data, error: saveErr } = await saveProposal(proposal);
       if (saveErr && saveErr !== 'not-authenticated' && saveErr !== 'offline') {
         console.warn('Could not save proposal to history:', saveErr);
       } else if (!saveErr) {
+        setActiveDoc({ id: data && data[0] && data[0].id, content: proposal, token: null });
         refreshHistory();
       }
     } catch (e) { /* history is optional — ignore */ }
@@ -654,12 +656,14 @@ async function generateInvoice() {
   };
 
   renderInvoice(data);
+  setActiveDoc({ id: null, content: data, token: null });
 
   try {
-    const { error: saveErr } = await saveProposal(data);
+    const { data: saved, error: saveErr } = await saveProposal(data);
     if (saveErr && saveErr !== 'not-authenticated' && saveErr !== 'offline') {
       console.warn('Could not save invoice to history:', saveErr);
     } else if (!saveErr) {
+      setActiveDoc({ id: saved && saved[0] && saved[0].id, content: data, token: null });
       refreshHistory();
     }
   } catch (e) { /* history is optional — ignore */ }
@@ -958,6 +962,231 @@ async function handleSavePassword() {
   }
 }
 
+/* ============================================================
+   Live Sharing / Collaboration
+   A doc can be shared via an unguessable token link. The owner and any
+   link-holder edit the same contenteditable; edits broadcast over a
+   Supabase Realtime channel (live) and persist last-write-wins. The guest
+   path needs no account — RPCs in supabase.js gate access by the token.
+   ============================================================ */
+const collab = {
+  id: null,        // proposals.id of the doc currently on screen
+  token: null,     // share_token (set when shared or opened via link)
+  content: null,   // structured content object (carries .collabHtml)
+  channel: null,   // realtime channel handle from createDocChannel
+  isShared: false, // owner has sharing turned on
+  isGuest: false,  // opened via ?share= link
+  applyingRemote: false,
+  lastEditAt: 0,
+  pendingRemoteHtml: null,
+  me: null,
+};
+const COLLAB_BROADCAST_MS = 250;
+const COLLAB_PERSIST_MS = 1500;
+const COLLAB_IDLE_MS = 1200; // don't overwrite the doc while the user is typing
+
+function collabMe() {
+  if (collab.me) return collab.me;
+  const id = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2);
+  collab.me = { id, name: collab.isGuest ? 'Collaborator' : 'Owner', role: collab.isGuest ? 'guest' : 'owner' };
+  return collab.me;
+}
+
+function shareUrl(token) {
+  return `${window.location.origin}${window.location.pathname}?share=${token}`;
+}
+
+// Remember the doc now on screen so it can be shared / synced.
+function setActiveDoc({ id, content, token }) {
+  collab.id = id || null;
+  collab.content = content || null;
+  collab.token = token || null;
+  collab.isShared = !!token;
+  updateShareButton();
+}
+
+function updateShareButton() {
+  const btn = $('shareBtn');
+  if (!btn) return;
+  if (collab.isGuest) { btn.hidden = true; return; }
+  btn.hidden = !collab.id;
+  btn.classList.toggle('btn--shared', collab.isShared);
+  const label = $('shareBtnLabel');
+  if (label) label.textContent = collab.isShared ? 'Sharing' : 'Share';
+}
+
+/* ----- Edit capture & sync ----- */
+function getDocHtml() { return $('proposal').innerHTML; }
+
+let _bcTimer = null, _persistTimer = null;
+function onLocalEdit() {
+  if (collab.applyingRemote) return;
+  collab.lastEditAt = Date.now();
+  if (collab.content) collab.content.collabHtml = getDocHtml();
+  if (collab.channel) {
+    clearTimeout(_bcTimer);
+    _bcTimer = setTimeout(() => collab.channel && collab.channel.broadcast(getDocHtml()), COLLAB_BROADCAST_MS);
+  }
+  if (collab.isShared || collab.isGuest) {
+    clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(persistDoc, COLLAB_PERSIST_MS);
+  }
+}
+
+async function persistDoc() {
+  if (!collab.content) return;
+  collab.content.collabHtml = getDocHtml();
+  try {
+    if (collab.isGuest && collab.token) {
+      await saveSharedDoc(collab.token, collab.content);
+    } else if (collab.isShared && collab.id) {
+      await saveProposal(collab.content);
+    }
+  } catch { /* best effort */ }
+}
+
+let _editListenerAttached = false;
+function attachEditListener() {
+  if (_editListenerAttached) return;
+  $('proposal').addEventListener('input', onLocalEdit);
+  _editListenerAttached = true;
+}
+
+/* ----- Apply remote edits (idle-guarded, caret-preserving) ----- */
+function applyRemoteHtml(html) {
+  if (html == null) return;
+  const el = $('proposal');
+  if (el.innerHTML === html) return;
+  const idle = Date.now() - collab.lastEditAt > COLLAB_IDLE_MS;
+  const focused = el === document.activeElement || el.contains(document.activeElement);
+  if (focused && !idle) { collab.pendingRemoteHtml = html; scheduleIdleApply(); return; }
+  doApplyRemote(html);
+}
+let _idleTimer = null;
+function scheduleIdleApply() {
+  clearTimeout(_idleTimer);
+  _idleTimer = setTimeout(() => {
+    const html = collab.pendingRemoteHtml;
+    collab.pendingRemoteHtml = null;
+    if (html != null && $('proposal').innerHTML !== html) doApplyRemote(html);
+  }, COLLAB_IDLE_MS);
+}
+function doApplyRemote(html) {
+  const el = $('proposal');
+  const offset = saveCaretOffset(el);
+  collab.applyingRemote = true;
+  el.innerHTML = html;
+  if (collab.content) collab.content.collabHtml = html;
+  collab.applyingRemote = false;
+  if (offset != null) restoreCaretOffset(el, offset);
+}
+function saveCaretOffset(root) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.startContainer)) return null;
+  const pre = range.cloneRange();
+  pre.selectNodeContents(root);
+  pre.setEnd(range.startContainer, range.startOffset);
+  return pre.toString().length;
+}
+function restoreCaretOffset(root, offset) {
+  try {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    let remaining = offset, node = walker.nextNode();
+    while (node) {
+      const len = node.textContent.length;
+      if (remaining <= len) {
+        const range = document.createRange();
+        range.setStart(node, remaining); range.collapse(true);
+        const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+        return;
+      }
+      remaining -= len; node = walker.nextNode();
+    }
+  } catch { /* leave caret as-is */ }
+}
+
+/* ----- Channel lifecycle & presence ----- */
+async function joinCollab() {
+  if (!collab.token || collab.channel) return;
+  attachEditListener();
+  collab.channel = await createDocChannel(collab.token, collabMe(), {
+    onEdit: (html) => applyRemoteHtml(html),
+    onPresence: (people) => updatePresence(people),
+  });
+}
+function leaveCollab() {
+  if (collab.channel) { collab.channel.leave(); collab.channel = null; }
+}
+function updatePresence(people) {
+  const n = (people || []).length || 1;
+  const a = $('collabPresence');
+  if (a) a.textContent = n <= 1 ? 'Just you so far' : `${n} people here now`;
+  const b = $('collabBannerPresence');
+  if (b) b.textContent = n <= 1 ? '' : `${n} people editing`;
+}
+
+/* ----- Owner: share button + modal ----- */
+async function handleShareClick() {
+  if (!collab.id) { setStatus('error', 'Generate or open a document first, then share it.'); return; }
+  const session = await getSession();
+  if (!session) { showAuthModal(); return; }
+  if (!collab.isShared) {
+    setStatus('working', '<span class="spinner"></span> Enabling sharing…');
+    const { token, error } = await enableShare(collab.id);
+    if (error) { setStatus('error', `Could not enable sharing: ${esc(error.message || String(error))}`); return; }
+    collab.token = token;
+    collab.isShared = true;
+    setStatus('', '');
+    await persistDoc();
+    await joinCollab();
+    updateShareButton();
+  }
+  openShareModal();
+}
+function openShareModal() {
+  $('shareLinkInput').value = shareUrl(collab.token);
+  updatePresence(collab.channel ? null : [collabMe()]);
+  $('shareModal').classList.add('modal--visible');
+  $('shareLinkInput').select();
+}
+function closeShareModal() { $('shareModal').classList.remove('modal--visible'); }
+async function handleStopSharing() {
+  if (!collab.id) return;
+  if (!confirm('Stop sharing this document? The link will immediately stop working for everyone.')) return;
+  const { error } = await disableShare(collab.id);
+  if (error) { alert('Could not stop sharing: ' + (error.message || error)); return; }
+  collab.isShared = false; collab.token = null;
+  leaveCollab();
+  updateShareButton();
+  closeShareModal();
+  setStatus('ok', 'Sharing stopped — the link no longer works.');
+}
+
+/* ----- Guest: open a shared doc via ?share= link ----- */
+async function enterGuestMode(token) {
+  collab.isGuest = true;
+  document.body.classList.add('collab-guest');
+  $('collabBanner').hidden = false;
+  setStatus('working', '<span class="spinner"></span> Opening shared document…');
+  const { doc, error } = await getSharedDoc(token);
+  if (error || !doc) {
+    const gone = error && error.message === 'not-found';
+    $('collabBanner').hidden = true;
+    $('proposal').innerHTML = `<div class="collab-error"><h2>${gone ? 'This link is no longer active' : 'Could not open this document'}</h2><p>${gone ? 'The owner may have stopped sharing it.' : 'Please check the link or ask the owner to re-share.'}</p></div>`;
+    setStatus('', '');
+    return;
+  }
+  collab.id = doc.id;
+  collab.token = token;
+  collab.content = doc.content || {};
+  openDocument(collab.content);
+  setStatus('', '');
+  attachEditListener();
+  await joinCollab();
+}
+
 /* ---------- Auth Modal ---------- */
 function showAuthModal() {
   setAuthMode('login');
@@ -1051,7 +1280,7 @@ async function updateAuthState() {
       if (openId) {
         try {
           const proposal = await fetchProposalById(openId);
-          if (proposal && proposal.content) openDocument(proposal.content);
+          if (proposal && proposal.content) await loadOwnedDoc(proposal);
         } catch { /* non-blocking */ }
         const url = new URL(window.location.href);
         url.searchParams.delete('open');
@@ -1081,6 +1310,17 @@ function openDocument(content) {
     setMode('proposal');
     render(content);
   }
+  // Restore any inline collaborative edits over the freshly rendered structure.
+  if (content.collabHtml) $('proposal').innerHTML = content.collabHtml;
+}
+
+/* Open a doc the signed-in user owns (from history / dashboard / ?open=),
+   wiring up live sync if it's already being shared. */
+async function loadOwnedDoc(row) {
+  if (!row || !row.content) return;
+  openDocument(row.content);
+  setActiveDoc({ id: row.id, content: row.content, token: row.share_token });
+  if (row.share_token) await joinCollab();
 }
 
 /* ---------- History ---------- */
@@ -1118,7 +1358,7 @@ async function refreshHistory() {
     list.querySelectorAll('.history-item').forEach(el => {
       el.querySelector('.history-item__body').onclick = () => {
         const p = items.find(i => i.id === el.dataset.id);
-        if (p && p.content) openDocument(p.content);
+        if (p && p.content) loadOwnedDoc(p);
       };
       el.querySelector('.history-item__delete').onclick = async (e) => {
         e.stopPropagation();
@@ -1226,7 +1466,7 @@ function renderDashboardGrid(items) {
       }
       const p = allItems.find((i) => i.id === id);
       if (p && p.content) {
-        openDocument(p.content);
+        loadOwnedDoc(p);
         hideDashboardModal();
       }
     });
@@ -1463,9 +1703,31 @@ function init() {
     document.querySelectorAll('.dashboard__tab').forEach((tab) => {
       tab.addEventListener('click', () => setDashboardTypeFilter(tab.dataset.type));
     });
+
+    // Live collaboration wiring
+    attachEditListener();
+    $('shareBtn').addEventListener('click', handleShareClick);
+    $('closeShare').addEventListener('click', closeShareModal);
+    $('shareModal').addEventListener('click', (e) => { if (e.target === $('shareModal')) closeShareModal(); });
+    $('shareCopyBtn').addEventListener('click', () => {
+      const inp = $('shareLinkInput');
+      inp.select();
+      navigator.clipboard?.writeText(inp.value).then(() => {
+        $('shareCopyBtn').textContent = 'Copied!';
+        setTimeout(() => { $('shareCopyBtn').textContent = 'Copy'; }, 2000);
+      }).catch(() => { /* clipboard blocked — link is still selected */ });
+    });
+    $('stopSharingBtn').addEventListener('click', handleStopSharing);
+
+    // Guest entry: ?share=<token> opens a shared doc with no account required.
+    const shareToken = new URLSearchParams(window.location.search).get('share');
+    if (shareToken) enterGuestMode(shareToken);
   } catch (err) {
     console.error('App initialization failed:', err);
   }
 }
+
+// Leave the realtime channel cleanly when the tab closes.
+window.addEventListener('beforeunload', () => { try { leaveCollab(); } catch { /* ignore */ } });
 
 document.addEventListener('DOMContentLoaded', init);

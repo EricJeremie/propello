@@ -300,3 +300,122 @@ export async function submitClientQuestionnaire(ownerId, answers) {
     return { error: err.message || 'Network error while submitting.' };
   }
 }
+
+/* ---------- Live Sharing / Collaboration ---------- */
+
+/* Owner-only: turn sharing on for a doc they own (RLS enforces ownership).
+   Reuses an existing token so the link stays stable. Returns { token } or { error }. */
+export async function enableShare(proposalId) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline — cannot enable sharing.' } };
+  const session = await getSession();
+  if (!session) return { error: { message: 'Sign in to share a document.' } };
+  try {
+    // Reuse the token if it already exists.
+    const { data: existing } = await sb
+      .from('proposals').select('share_token').eq('id', proposalId).single();
+    if (existing && existing.share_token) return { token: existing.share_token };
+
+    const token = (crypto.randomUUID && crypto.randomUUID()) ||
+      ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
+    const { error } = await sb
+      .from('proposals').update({ share_token: token }).eq('id', proposalId);
+    if (error) return { error };
+    return { token };
+  } catch (err) {
+    return { error: { message: err.message || 'Could not enable sharing.' } };
+  }
+}
+
+/* Owner-only: revoke sharing — the link stops working immediately. */
+export async function disableShare(proposalId) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline.' } };
+  try {
+    const { error } = await sb
+      .from('proposals').update({ share_token: null }).eq('id', proposalId);
+    return { error };
+  } catch (err) {
+    return { error: { message: err.message || 'Could not stop sharing.' } };
+  }
+}
+
+/* Anonymous (or any) link-holder: load the one shared doc by token. */
+export async function getSharedDoc(token) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline — cannot open shared document.' } };
+  try {
+    const { data, error } = await sb.rpc('get_shared_proposal', { p_token: token });
+    if (error) return { error };
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { error: { message: 'not-found' } };
+    return { doc: row };
+  } catch (err) {
+    return { error: { message: err.message || 'Could not open shared document.' } };
+  }
+}
+
+/* Anonymous (or any) link-holder: persist the shared doc's content by token. */
+export async function saveSharedDoc(token, content) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline.' } };
+  try {
+    const { data, error } = await sb.rpc('save_shared_proposal', { p_token: token, p_content: content });
+    if (error) return { error };
+    return { ok: data === true };
+  } catch (err) {
+    return { error: { message: err.message || 'Could not save.' } };
+  }
+}
+
+/* Realtime channel for a shared doc. Broadcasts edits and tracks presence.
+   handlers: { onEdit(html, fromId), onPresence(participants) }.
+   Returns { broadcast(html), leave() } or null if realtime is unavailable. */
+export async function createDocChannel(token, me, handlers = {}) {
+  const sb = await getClient();
+  if (!sb) return null;
+  try {
+    const channel = sb.channel(`proposal:${token}`, {
+      config: { broadcast: { self: false }, presence: { key: me.id } },
+    });
+
+    channel.on('broadcast', { event: 'edit' }, (msg) => {
+      const p = msg.payload || {};
+      if (p.from === me.id) return;
+      handlers.onEdit && handlers.onEdit(p.html, p.from);
+    });
+
+    if (handlers.onPresence) {
+      const emit = () => {
+        const state = channel.presenceState();
+        const people = Object.values(state).flat();
+        handlers.onPresence(people);
+      };
+      channel.on('presence', { event: 'sync' }, emit);
+      channel.on('presence', { event: 'join' }, emit);
+      channel.on('presence', { event: 'leave' }, emit);
+    }
+
+    await new Promise((resolve) => {
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.track({ id: me.id, name: me.name, role: me.role });
+          resolve();
+        }
+      });
+    });
+
+    return {
+      broadcast(html) {
+        channel.send({ type: 'broadcast', event: 'edit', payload: { html, from: me.id } });
+      },
+      leave() {
+        try { channel.untrack(); sb.removeChannel(channel); } catch { /* ignore */ }
+      },
+    };
+  } catch (err) {
+    console.warn('Realtime channel unavailable:', err && err.message);
+    return null;
+  }
+}
