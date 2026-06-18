@@ -7,6 +7,7 @@
 
 import { getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js';
 import { initLayout } from './nav.js';
+import { createQuickSearch } from './quick-search.js';
 
 /* ---------- Constants ---------- */
 const MODEL = 'gemini-2.5-flash';
@@ -1984,6 +1985,84 @@ function autofillInvoiceMeta() {
   $('f_inv_date').value = new Date().toLocaleDateString(getLocale('f_inv_locale'), { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+/* ---------- Quick Search ---------- */
+function quickSearchLabelForProposal(row) {
+  const type = row.content?.docType === 'invoice' ? 'Invoice' : 'Proposal';
+  return {
+    kind: row.content?.docType === 'invoice' ? 'invoice' : 'proposal',
+    kindLabel: type,
+    title: row.project_title || row.content?.meta?.title || 'Untitled',
+    meta: [row.client_name, row.doc_number, type].filter(Boolean).join(' · '),
+    keywords: [
+      row.project_title,
+      row.content?.meta?.title,
+      row.client_name,
+      row.doc_number,
+      row.content?.client?.company,
+      row.content?.preparedBy?.name,
+      row.content?.meta?.proposalName,
+      row.content?.meta?.invoiceName,
+    ].filter(Boolean).join(' '),
+    id: row.id,
+    row,
+  };
+}
+
+function quickSearchLabelForQuestionnaire(row) {
+  return {
+    kind: 'questionnaire',
+    kindLabel: 'Questionnaire',
+    title: row.project_name || row.client_name || 'Questionnaire',
+    meta: [row.client_name, row.doc_number, row.project_type].filter(Boolean).join(' · '),
+    keywords: [row.project_name, row.client_name, row.doc_number, row.project_type].filter(Boolean).join(' '),
+    id: row.id,
+    row,
+  };
+}
+
+async function getQuickSearchItems() {
+  const [proposals, questionnaires] = await Promise.all([
+    fetchUserProposals(),
+    fetchUserQuestionnaires(),
+  ]);
+  const items = [
+    ...proposals.map(quickSearchLabelForProposal),
+    ...questionnaires.map(quickSearchLabelForQuestionnaire),
+  ];
+  if (collab.id && collab.content) {
+    const currentType = collab.content.docType === 'invoice' ? 'invoice' : 'proposal';
+    items.unshift({
+      kind: currentType,
+      kindLabel: currentType === 'invoice' ? 'Invoice' : 'Proposal',
+      title: collab.content.meta?.title || collab.content.meta?.proposalName || collab.content.meta?.invoiceName || 'Current document',
+      meta: 'Currently open',
+      keywords: [collab.content.meta?.title, collab.content.meta?.proposalName, collab.content.meta?.invoiceName].filter(Boolean).join(' '),
+      id: collab.id,
+      row: { id: collab.id, content: collab.content, share_token: collab.token },
+    });
+  }
+  return items;
+}
+
+async function openQuickSearchResult(item) {
+  if (!item) return;
+  if (item.kind === 'questionnaire') {
+    window.location.href = `requirements.html?submission=${encodeURIComponent(item.id)}`;
+    return;
+  }
+  if (collab.id === item.id && collab.content) {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  const row = item.row || await fetchProposalById(item.id) || null;
+  if (row && row.content) {
+    await loadOwnedDoc(row);
+    return;
+  }
+  const fallback = item.kind === 'invoice' ? 'index.html?mode=invoice' : 'index.html';
+  window.location.href = `${fallback}${fallback.includes('?') ? '&' : '?'}open=${encodeURIComponent(item.id)}`;
+}
+
 /* ---------- Mode switching ---------- */
 function setMode(mode) {
   document.querySelectorAll('.mode-tab').forEach((tab) => {
@@ -2067,6 +2146,15 @@ function init() {
     initLayout({
       activePage: activeMode,
       onSettings: showSettingsModal,
+    });
+
+    createQuickSearch({
+      buttonId: 'quickSearchBtn',
+      title: 'Quick Search',
+      subtitle: 'Jump to proposals, invoices, and questionnaires.',
+      placeholder: 'Search by title, client, doc no., or keyword',
+      getItems: getQuickSearchItems,
+      onSelect: openQuickSearchResult,
     });
 
     // Settings modal wiring

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=31" />
   <script defer src="preloader.js?v=1"></script>
 </head>
 <body>
@@ -66,6 +66,10 @@
             <button type="button" class="dash-page__tab" data-type="invoice" role="tab" aria-selected="false">Invoices</button>
             <button type="button" class="dash-page__tab" data-type="questionnaire" role="tab" aria-selected="false">Questionnaires</button>
           </div>
+          <button id="dashQuickSearchBtn" type="button" class="btn btn--ghost btn--sm dash-page__quicksearch">
+            <span>Quick Search</span>
+            <span class="btn__kbd">⌘K</span>
+          </button>
           <input id="dashSearch" class="input dash-page__search" type="search" placeholder="Search by title, client, or doc no." />
         </div>
 
@@ -77,6 +81,6 @@
     </main>
   </div>
 
-  <script type="module" src="dashboard.js?v=6"></script>
+  <script type="module" src="dashboard.js?v=7"></script>
 </body>
 </html>

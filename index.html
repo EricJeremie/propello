@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=30" />
+  <link rel="stylesheet" href="styles.css?v=31" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -28,6 +28,10 @@
       <span class="appbar__title">Proposal Generator</span>
     </div>
     <div class="appbar__actions">
+      <button id="quickSearchBtn" class="btn btn--ghost nav-link btn--quicksearch" type="button" aria-label="Quick search">
+        <span>Quick Search</span>
+        <span class="btn__kbd">⌘K</span>
+      </button>
       <div id="collabAvatars" class="collab-avatars" hidden aria-label="People editing"></div>
       <button id="authNavBtn" class="btn btn--ghost nav-link">Login</button>
       <button id="shareBtn" class="btn btn--ghost" type="button" hidden>
@@ -453,6 +457,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=25"></script>
+  <script type="module" src="app.js?v=26"></script>
 </body>
 </html>

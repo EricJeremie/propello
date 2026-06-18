@@ -6,6 +6,7 @@ import {
   fetchUserProposals, fetchUserQuestionnaires,
   deleteProposal, deleteQuestionnaire,
 } from './supabase.js';
+import { createQuickSearch } from './quick-search.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s)
@@ -15,7 +16,6 @@ let allProposals = [];
 let allQuestionnaires = [];
 let activeFilter = 'all';
 let searchQuery = '';
-
 function getDocType(item) {
   if (item._type === 'questionnaire') return 'questionnaire';
   if (item.content && item.content.docType === 'invoice') return 'invoice';
@@ -135,6 +135,33 @@ function setFilter(type) {
   applyFilter();
 }
 
+function getDashboardQuickSearchItems() {
+  return mergeItems().map((item) => {
+    const type = getDocType(item);
+    const title = item.project_title || item.project_name || 'Untitled';
+    const meta = [item.client_name, item.doc_number, TYPE_LABELS[type]].filter(Boolean).join(' · ');
+    const keywords = [item.project_title, item.project_name, item.client_name, item.doc_number, item.project_type, item.status].filter(Boolean).join(' ');
+    return {
+      id: item.id,
+      kind: type,
+      kindLabel: TYPE_LABELS[type],
+      title,
+      meta,
+      keywords,
+      row: item,
+    };
+  });
+}
+
+function openDashboardQuickSearchResult(item) {
+  if (!item) return;
+  if (item.kind === 'questionnaire') {
+    window.location.href = `requirements.html?submission=${encodeURIComponent(item.id)}`;
+    return;
+  }
+  window.location.href = `index.html?open=${encodeURIComponent(item.id)}`;
+}
+
 async function updateAuthState(session) {
   if (session === undefined) session = await getSession();
 
@@ -225,6 +252,14 @@ function init() {
   });
 
   initLayout({ activePage: 'dashboard' });
+  createQuickSearch({
+    buttonId: 'dashQuickSearchBtn',
+    title: 'Quick Search',
+    subtitle: 'Jump to proposals, invoices, and questionnaires.',
+    placeholder: 'Search by title, client, doc no., or keyword',
+    getItems: getDashboardQuickSearchItems,
+    onSelect: openDashboardQuickSearchResult,
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
