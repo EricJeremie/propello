@@ -38,7 +38,9 @@ function formatAnswers(answers: Record<string, unknown>): string {
   const label = (key: string) => key.replace(/([A-Z])/g, ' $1').trim()
     .replace(/^./, (c) => c.toUpperCase());
   for (const [k, v] of Object.entries(answers)) {
+    if (k.startsWith('__')) continue;
     if (v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) continue;
+    if (typeof v === 'object' && !Array.isArray(v)) continue;
     const val = Array.isArray(v) ? (v as string[]).join(', ') : String(v);
     lines.push(`${label(k)}: ${val}`);
   }
@@ -157,30 +159,145 @@ const SRD_SCHEMA = {
   },
 };
 
+const ANSWER_KEYS = [
+  'contactName', 'contactCompany', 'contactEmail', 'contactIndustry',
+  'projectType', 'projectName', 'projectDescription', 'projectProblem',
+  'websiteType', 'websitePages', 'websiteCMS', 'websiteDesign', 'websiteFeatures', 'websiteIntegrations',
+  'webappFeatures', 'webappAuth', 'webappRoles', 'webappAdmin', 'webappPayments', 'webappRealtime', 'webappIntegrations', 'webappData',
+  'mobilePlatform', 'mobileTech', 'mobileCategory', 'mobileFeatures', 'mobileSpecial', 'mobileAppStore',
+  'softwareType', 'softwareEnvironment', 'softwareUsers', 'softwarePerformance', 'softwareSecurity', 'softwareIntegrations',
+  'targetUsers', 'userCount', 'devices', 'targetDate', 'flexibleTimeline', 'budgetRange', 'hasExisting',
+  'references', 'techPreferences', 'mustHave', 'additionalNotes',
+] as const;
+
+const INTERVIEW_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string', description: 'A concise conversational response that asks exactly one focused question, or presents the final brief summary when ready.' },
+    extractedFacts: {
+      type: 'array',
+      description: 'Facts explicitly stated by the user, mapped to the closest supported answer key. Include previously known facts that remain valid.',
+      items: {
+        type: 'object',
+        properties: {
+          key: { type: 'string', enum: ANSWER_KEYS },
+          value: { type: 'string' },
+        },
+      },
+    },
+    missingTopics: { type: 'array', items: { type: 'string' }, description: 'Up to eight short topic labels that still need clarification.' },
+    readyToGenerate: { type: 'boolean' },
+  },
+};
+
+const REVISION_SCHEMA = {
+  type: 'object',
+  properties: {
+    reply: { type: 'string', description: 'One concise sentence explaining what changed in the SRD.' },
+    extractedFacts: INTERVIEW_SCHEMA.properties.extractedFacts,
+    srd: SRD_SCHEMA,
+  },
+};
+
+type GeminiResult = { value?: Record<string, unknown>; error?: string; status?: number };
+
+function sanitizeAnswers(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+  const source = input as Record<string, unknown>;
+  const clean: Record<string, unknown> = {};
+  for (const key of ANSWER_KEYS) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) clean[key] = value.trim().slice(0, 5000);
+    if (Array.isArray(value)) clean[key] = value.map(String).map((v) => v.slice(0, 1000)).slice(0, 30);
+  }
+  return clean;
+}
+
+function sanitizeMessages(input: unknown): Array<{ role: 'user' | 'assistant'; content: string }> {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((m) => m && typeof m === 'object')
+    .map((m) => m as Record<string, unknown>)
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => ({ role: m.role as 'user' | 'assistant', content: String(m.content || '').trim().slice(0, 4000) }))
+    .filter((m) => m.content)
+    .slice(-30);
+}
+
+function formatConversation(messages: Array<{ role: 'user' | 'assistant'; content: string }>): string {
+  return messages.map((m) => `${m.role === 'user' ? 'Staff' : 'Analyst'}: ${m.content}`).join('\n\n');
+}
+
+function factsToAnswers(value: unknown): Record<string, string> {
+  if (!Array.isArray(value)) return {};
+  const allowed = new Set<string>(ANSWER_KEYS);
+  const extracted: Record<string, string> = {};
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const fact = item as Record<string, unknown>;
+    const key = String(fact.key || '');
+    const val = String(fact.value || '').trim();
+    if (allowed.has(key) && val) extracted[key] = val.slice(0, 5000);
+  }
+  return extracted;
+}
+
+async function callGemini(key: string, prompt: string, schema: unknown, maxOutputTokens: number): Promise<GeminiResult> {
+  try {
+    const upstream = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          generationConfig: {
+            maxOutputTokens,
+            responseMimeType: 'application/json',
+            responseSchema: toGeminiSchema(schema),
+          },
+        }),
+      },
+    );
+    const data = await upstream.json();
+    if (!upstream.ok) return { error: data?.error?.message || `Gemini error (HTTP ${upstream.status})`, status: upstream.status };
+    const text = (data?.candidates?.[0]?.content?.parts || [])
+      .map((part: Record<string, unknown>) => part.text || '').join('');
+    if (!text) {
+      const reason = data?.candidates?.[0]?.finishReason;
+      return { error: `Gemini returned no content${reason ? ` (${reason})` : ''}.`, status: 502 };
+    }
+    try { return { value: JSON.parse(text) }; }
+    catch { return { error: 'The AI response was not valid JSON.', status: 502 }; }
+  } catch (error) {
+    return { error: 'Upstream request failed: ' + (error as Error).message, status: 502 };
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: { message: 'Method not allowed' } }, 405);
 
+  const contentLength = Number(req.headers.get('content-length') || 0);
+  if (contentLength > 250_000) return json({ error: { message: 'Request body is too large.' } }, 413);
+
   const key = Deno.env.get('GEMINI_API_KEY');
-  if (!key) {
-    return json({ error: { message: 'Server is missing GEMINI_API_KEY.' } }, 501);
-  }
+  if (!key) return json({ error: { message: 'Server is missing GEMINI_API_KEY.' } }, 501);
 
   const authHeader = req.headers.get('authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!token) {
-    return json({ error: { message: 'You must be signed in to generate an SRD.' } }, 401);
-  }
+  if (!token) return json({ error: { message: 'You must be signed in to use AI requirements tools.' } }, 401);
+
   try {
     const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: SUPABASE_ANON_KEY, authorization: `Bearer ${token}` },
     });
-    if (!userRes.ok) {
-      return json({ error: { message: 'Your session is invalid or expired. Please sign in again.' } }, 401);
-    }
+    if (!userRes.ok) return json({ error: { message: 'Your session is invalid or expired. Please sign in again.' } }, 401);
     const user = await userRes.json();
-    if (!user || !user.id) {
-      return json({ error: { message: 'Your session is invalid or expired. Please sign in again.' } }, 401);
+    if (!user?.id) return json({ error: { message: 'Your session is invalid or expired. Please sign in again.' } }, 401);
+    if (user.app_metadata?.role !== 'staff') {
+      return json({ error: { message: 'This feature is restricted to verified PocketDevs staff.' } }, 403);
     }
   } catch {
     return json({ error: { message: 'Could not verify your session. Please try again.' } }, 502);
@@ -188,45 +305,81 @@ Deno.serve(async (req: Request) => {
 
   let body: Record<string, unknown>;
   try { body = await req.json(); }
-  catch { return json({ error: { message: 'Invalid JSON body' } }, 400); }
+  catch { return json({ error: { message: 'Invalid JSON body.' } }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return json({ error: { message: 'JSON body must be an object.' } }, 400);
+  }
+  if (JSON.stringify(body).length > 250_000) return json({ error: { message: 'Request body is too large.' } }, 413);
 
-  const answers = body.answers as Record<string, unknown>;
-  if (!answers || typeof answers !== 'object') {
-    return json({ error: { message: 'Missing answers object in request body.' } }, 400);
+  const action = typeof body.action === 'string' ? body.action : 'generate';
+  if (!['interview', 'generate', 'revise'].includes(action)) {
+    return json({ error: { message: 'Unsupported requirements action.' } }, 400);
+  }
+  const answers = sanitizeAnswers(body.answers);
+  const messages = sanitizeMessages(body.messages);
+
+  if (action === 'interview') {
+    if (!messages.some((m) => m.role === 'user')) return json({ error: { message: 'Send at least one project description.' } }, 400);
+    const prompt = `Act as a warm, precise requirements analyst conducting a conversational project intake. Do not write the SRD yet.
+
+Your job for this turn:
+1. Extract only facts the staff member explicitly stated or confirmed. Map them to these supported keys: ${ANSWER_KEYS.join(', ')}.
+2. Ask exactly ONE focused follow-up question about the most important missing topic. Keep the reply concise and conversational.
+3. Set readyToGenerate to true only when these core areas are sufficiently clear: product type and purpose; users and roles; core workflows/features; integrations or explicit absence of them; expected scale/devices; security or compliance needs; timeline/budget/constraints.
+4. When ready, do not ask another question. Instead, briefly summarize the agreed scope, say it is ready to generate, return no missing topics, and set readyToGenerate to true.
+5. Never invent requirements or silently treat a suggestion as confirmed. For projectType use exactly website, webapp, mobile, or software.
+
+Already captured facts:
+${formatAnswers(answers) || '[None yet]'}
+
+Conversation:
+${formatConversation(messages)}`;
+    const result = await callGemini(key, prompt, INTERVIEW_SCHEMA, 3000);
+    if (result.error) return json({ error: { message: result.error } }, result.status || 502);
+    return json({
+      reply: String(result.value?.reply || ''),
+      extractedAnswers: factsToAnswers(result.value?.extractedFacts),
+      missingTopics: Array.isArray(result.value?.missingTopics) ? result.value?.missingTopics : [],
+      readyToGenerate: result.value?.readyToGenerate === true,
+    });
   }
 
-  const prompt = `Generate a complete, detailed System Requirements Document for this client project intake. Use every relevant answer below — do not ignore any of it, and do not contradict it:\n\n${formatAnswers(answers)}\n\nBe thorough and specific, matching the depth of a professional IEEE-830-style SRS: at least 6 functional requirement modules with 3–7 testable requirements each (each tagged Must/Should/Could), at least 6 non-functional requirement categories (Performance, Security, Scalability, Usability, Reliability & Availability, Compatibility) with 2–4 measurable requirements each, and user classes that match the roles described in the answers. Make no mistakes — every section must stay internally consistent with the client's actual answers.`;
+  if (!Object.keys(answers).length) return json({ error: { message: 'No project requirements were provided.' } }, 400);
 
-  const geminiBody = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-    generationConfig: {
-      maxOutputTokens: 24000,
-      responseMimeType: 'application/json',
-      responseSchema: toGeminiSchema(SRD_SCHEMA),
-    },
-  };
+  if (action === 'revise') {
+    const srd = body.srd;
+    const instruction = String(body.instruction || messages.filter((m) => m.role === 'user').at(-1)?.content || '').trim().slice(0, 4000);
+    if (!instruction) return json({ error: { message: 'A revision instruction is required.' } }, 400);
+    if (!srd || typeof srd !== 'object' || Array.isArray(srd) || JSON.stringify(srd).length > 180_000) {
+      return json({ error: { message: 'A valid current SRD is required for revision.' } }, 400);
+    }
+    const prompt = `Revise the complete SRD below according to the staff member's latest instruction. Return the FULL updated SRD, not a patch. Preserve every unaffected requirement, numbering structure, level of detail, and internal consistency. Update any affected user classes, interfaces, non-functional requirements, assumptions, and acceptance criteria so the document never contradicts itself. Extract newly confirmed facts into the supported answer keys when applicable.
 
-  try {
-    const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(geminiBody) },
-    );
-    const data = await upstream.json();
-    if (!upstream.ok) {
-      return json({ error: { message: data?.error?.message || `Gemini error (HTTP ${upstream.status})` } }, upstream.status);
-    }
-    const text = (data?.candidates?.[0]?.content?.parts || [])
-      .map((p: Record<string, unknown>) => p.text || '').join('');
-    if (!text) {
-      const reason = data?.candidates?.[0]?.finishReason;
-      return json({ error: { message: `Gemini returned no content${reason ? ` (${reason})` : ''}.` } }, 502);
-    }
-    let srd: unknown;
-    try { srd = JSON.parse(text); }
-    catch { return json({ error: { message: 'SRD response was not valid JSON.' } }, 502); }
-    return json({ srd });
-  } catch (e) {
-    return json({ error: { message: 'Upstream request failed: ' + (e as Error).message } }, 502);
+Latest instruction:
+${instruction}
+
+Known project facts:
+${formatAnswers(answers)}
+
+Current SRD:
+${JSON.stringify(srd)}`;
+    const result = await callGemini(key, prompt, REVISION_SCHEMA, 24000);
+    if (result.error) return json({ error: { message: result.error } }, result.status || 502);
+    if (!result.value?.srd) return json({ error: { message: 'The revised SRD was missing from the AI response.' } }, 502);
+    return json({
+      reply: String(result.value.reply || 'The System Requirements Document has been updated.'),
+      extractedAnswers: factsToAnswers(result.value.extractedFacts),
+      srd: result.value.srd,
+    });
   }
+
+  const transcript = messages.length ? `\n\nSupporting interview transcript:\n${formatConversation(messages)}` : '';
+  const prompt = `Generate a complete, detailed System Requirements Document for this client project intake. Use every relevant confirmed answer below — do not ignore any of it, and do not contradict it:
+
+${formatAnswers(answers)}${transcript}
+
+Be thorough and specific, matching the depth of a professional IEEE-830-style SRS: at least 6 functional requirement modules with 3–7 testable requirements each (each tagged Must/Should/Could), at least 6 non-functional requirement categories (Performance, Security, Scalability, Usability, Reliability & Availability, Compatibility) with 2–4 measurable requirements each, and user classes that match the roles described in the answers. Treat the structured answers as authoritative if the transcript contains earlier, superseded details. Make no mistakes — every section must stay internally consistent with the confirmed requirements.`;
+  const result = await callGemini(key, prompt, SRD_SCHEMA, 24000);
+  if (result.error) return json({ error: { message: result.error } }, result.status || 502);
+  return json({ srd: result.value });
 });

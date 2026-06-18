@@ -325,11 +325,111 @@ let currentQuestionIndex = 0;
 let isShareMode = false;
 let currentSubmissionId = null;
 let clientInviteOwnerId = null;
+let currentSRD = null;
+let activeIntakeMode = null;
+let chatMessages = [];
+let chatMissingTopics = ['Project overview'];
+let chatReadyToGenerate = false;
+let chatBusy = false;
+let pendingChatAfterAuth = false;
 // undefined = not resolved yet, null = confirmed logged out, object = logged in.
 // Always updated via updateAuthState()/onAuthChange — never re-fetched with a
 // fresh getSession() call at click-time, since that races with the Supabase
 // client's session-recovery-from-storage on a freshly loaded page.
 let currentSession;
+
+const CHAT_DRAFT_VERSION = 1;
+const CHAT_MAX_MESSAGES = 30;
+const CHAT_MAX_MESSAGE_LENGTH = 4000;
+const CHAT_INITIAL_MESSAGE = 'Tell me about the product or system you want to build. You can explain it casually — I\'ll organize the details and ask one focused question at a time.';
+
+function isStaffSession(session = currentSession) {
+  return session?.user?.app_metadata?.role === 'staff';
+}
+
+function makeChatMessage(role, content) {
+  return {
+    id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    role,
+    content: String(content || '').slice(0, CHAT_MAX_MESSAGE_LENGTH),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function cleanAnswersForAPI() {
+  return Object.fromEntries(Object.entries(answers).filter(([key]) => !key.startsWith('__')));
+}
+
+function mergeExtractedAnswers(extracted) {
+  if (!extracted || typeof extracted !== 'object' || Array.isArray(extracted)) return;
+  Object.entries(extracted).forEach(([key, value]) => {
+    if (!Q[key] || value == null) return;
+    const safeValue = Q[key].type === 'checkboxes' && !Array.isArray(value)
+      ? String(value).split(/,|\n/).map((item) => item.trim().slice(0, 1000)).filter(Boolean).slice(0, 30)
+      : Array.isArray(value)
+        ? value.map((item) => String(item).slice(0, 1000)).slice(0, 30)
+        : String(value).slice(0, 5000);
+    if (safeValue !== '' && (!Array.isArray(safeValue) || safeValue.length)) answers[key] = safeValue;
+  });
+}
+
+function serializedChatState() {
+  return {
+    version: CHAT_DRAFT_VERSION,
+    messages: chatMessages.slice(-CHAT_MAX_MESSAGES),
+    missingTopics: chatMissingTopics.slice(0, 12),
+    readyToGenerate: chatReadyToGenerate,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function chatDraftKey(submissionId = currentSubmissionId) {
+  const userId = currentSession?.user?.id || 'anonymous';
+  return `pocketdevs:requirements-chat:${userId}:${submissionId || 'new'}`;
+}
+
+function saveChatDraft() {
+  if (!isStaffSession()) return;
+  try {
+    localStorage.setItem(chatDraftKey(), JSON.stringify({
+      ...serializedChatState(),
+      answers: cleanAnswersForAPI(),
+    }));
+  } catch { /* local storage is best-effort */ }
+}
+
+function clearChatDraft(previousId = null) {
+  try {
+    localStorage.removeItem(chatDraftKey());
+    if (previousId !== currentSubmissionId) localStorage.removeItem(chatDraftKey(previousId));
+    localStorage.removeItem(chatDraftKey(null));
+  } catch { /* local storage is best-effort */ }
+}
+
+function restoreChatState(stored) {
+  if (!stored || stored.version !== CHAT_DRAFT_VERSION) return false;
+  if (Array.isArray(stored.messages)) {
+    chatMessages = stored.messages
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .slice(-CHAT_MAX_MESSAGES)
+      .map((m) => ({ ...m, content: m.content.slice(0, CHAT_MAX_MESSAGE_LENGTH) }));
+  }
+  if (Array.isArray(stored.missingTopics)) chatMissingTopics = stored.missingTopics.map(String).slice(0, 12);
+  chatReadyToGenerate = stored.readyToGenerate === true;
+  if (stored.answers && typeof stored.answers === 'object') mergeExtractedAnswers(stored.answers);
+  return true;
+}
+
+function restoreLocalChatDraft() {
+  try {
+    const raw = localStorage.getItem(chatDraftKey());
+    return raw ? restoreChatState(JSON.parse(raw)) : false;
+  } catch { return false; }
+}
+
+function ensureInitialChatMessage() {
+  if (!chatMessages.length) chatMessages = [makeChatMessage('assistant', CHAT_INITIAL_MESSAGE)];
+}
 
 function getActiveSteps() {
   return STEPS.filter((s) => !s.when || s.when(answers));
@@ -512,6 +612,228 @@ function clearStepError() {
   if (el) el.hidden = true;
 }
 
+/* ---------- AI requirements chat ---------- */
+function showModeChooser() {
+  activeIntakeMode = null;
+  $('rqModeChooser').hidden = false;
+  $('rqWizard').hidden = true;
+  $('rqChat').hidden = true;
+  $('rqReview').hidden = true;
+  $('rqSRDSection').hidden = true;
+  $('rqModeNotice').hidden = true;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function startQuestionnaire() {
+  activeIntakeMode = 'questionnaire';
+  $('rqModeChooser').hidden = true;
+  $('rqChat').hidden = true;
+  $('rqWizard').hidden = false;
+  $('rqSRDSection').hidden = true;
+  renderCurrentQuestion();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function startAIChat() {
+  if (currentSession === undefined) await updateAuthState();
+  if (!currentSession) {
+    pendingChatAfterAuth = true;
+    showAuthModal();
+    return;
+  }
+  if (!isStaffSession()) {
+    const notice = $('rqModeNotice');
+    notice.textContent = 'AI requirements chat is restricted to verified PocketDevs staff accounts.';
+    notice.hidden = false;
+    return;
+  }
+
+  activeIntakeMode = 'chat';
+  $('rqModeChooser').hidden = true;
+  $('rqWizard').hidden = true;
+  $('rqReview').hidden = true;
+  $('rqChat').hidden = false;
+  if (currentSRD) $('rqSRDSection').hidden = false;
+  if (!chatMessages.length && !answers.__aiChat) restoreLocalChatDraft();
+  ensureInitialChatMessage();
+  renderChatWorkspace();
+  setTimeout(() => $('rqChatInput').focus(), 80);
+}
+
+function chatTextHtml(text) {
+  return esc(text).replace(/\n/g, '<br>');
+}
+
+function renderChatMessages() {
+  const listEl = $('rqChatMessages');
+  listEl.innerHTML = chatMessages.map((message) => {
+    const user = message.role === 'user';
+    return `<div class="rq-chat-message ${user ? 'rq-chat-message--user' : 'rq-chat-message--assistant'}" data-message-id="${esc(message.id)}">
+      <div class="rq-chat-message__avatar">${user ? 'YOU' : 'AI'}</div>
+      <div class="rq-chat-message__body">
+        <span class="rq-chat-message__name">${user ? 'You' : 'Requirements analyst'}</span>
+        <div class="rq-chat-message__text">${chatTextHtml(message.content)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  listEl.scrollTop = listEl.scrollHeight;
+  $('rqChatStarters').hidden = chatMessages.some((m) => m.role === 'user');
+}
+
+function readableAnswer(value) {
+  return Array.isArray(value) ? value.join(', ') : String(value);
+}
+
+function renderChatBrief() {
+  const facts = Object.entries(cleanAnswersForAPI())
+    .filter(([key, value]) => Q[key] && value !== '' && value != null && (!Array.isArray(value) || value.length))
+    .slice(0, 10);
+  $('rqChatSummary').innerHTML = facts.length
+    ? facts.map(([key, value]) => `<div class="rq-chat-fact"><span class="rq-chat-fact__label">${esc(Q[key].label)}</span><span class="rq-chat-fact__value">${esc(readableAnswer(value))}</span></div>`).join('')
+    : '<p class="rq-chat__empty">Project details will appear here as the conversation develops.</p>';
+
+  const missing = chatMissingTopics.filter(Boolean).slice(0, 8);
+  $('rqChatMissing').innerHTML = missing.length
+    ? missing.map((topic) => `<span>${esc(topic)}</span>`).join('')
+    : '<span>Core brief complete</span>';
+  $('rqChatMissingWrap').hidden = chatReadyToGenerate && !missing.length;
+
+  const userTurns = chatMessages.filter((m) => m.role === 'user').length;
+  $('rqChatProgress').textContent = chatReadyToGenerate ? 'Ready to generate' : userTurns ? `${facts.length} details captured` : 'Just started';
+  $('rqChatGenerateBtn').hidden = !chatReadyToGenerate || !!currentSRD;
+  $('rqChatGenerateBtn').disabled = chatBusy;
+  $('rqChatGenerateHint').textContent = currentSRD
+    ? 'Continue chatting to revise the generated document.'
+    : chatReadyToGenerate
+      ? 'Review the brief, then generate the complete document.'
+      : 'The Generate button will appear when the core requirements are clear.';
+  $('rqChatInput').placeholder = currentSRD
+    ? 'Ask for a change, such as “add inventory alerts”...'
+    : 'Describe the project, features, users, or a change you want...';
+}
+
+function renderChatWorkspace() {
+  renderChatMessages();
+  renderChatBrief();
+}
+
+function setChatBusy(busy) {
+  chatBusy = busy;
+  $('rqChatTyping').hidden = !busy;
+  $('rqChatInput').disabled = busy;
+  $('rqChatSendBtn').disabled = busy;
+  $('rqChatGenerateBtn').disabled = busy;
+}
+
+function setChatError(message = '') {
+  const el = $('rqChatError');
+  el.textContent = message;
+  el.hidden = !message;
+}
+
+async function callRequirementsAPI(payload) {
+  const session = currentSession !== undefined ? currentSession : await getSession();
+  if (!session?.access_token) throw Object.assign(new Error('Please sign in to continue.'), { status: 401 });
+  const res = await fetch(REQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      authorization: `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data?.error?.message || `Request failed (HTTP ${res.status}).`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function chatAPIMessages() {
+  return chatMessages.slice(-CHAT_MAX_MESSAGES).map(({ role, content }) => ({ role, content }));
+}
+
+async function sendChatMessage(messageText = null) {
+  if (chatBusy) return;
+  const text = String(messageText == null ? $('rqChatInput').value : messageText).trim();
+  if (!text) return;
+  if (text.length > CHAT_MAX_MESSAGE_LENGTH) {
+    setChatError(`Messages can be up to ${CHAT_MAX_MESSAGE_LENGTH.toLocaleString()} characters.`);
+    return;
+  }
+  if (!isStaffSession()) {
+    setChatError('This feature requires a verified PocketDevs staff account.');
+    return;
+  }
+
+  setChatError();
+  chatMessages.push(makeChatMessage('user', text));
+  chatMessages = chatMessages.slice(-CHAT_MAX_MESSAGES);
+  $('rqChatInput').value = '';
+  renderChatMessages();
+  setChatBusy(true);
+  saveChatDraft();
+
+  try {
+    const action = currentSRD ? 'revise' : 'interview';
+    const data = await callRequirementsAPI({
+      action,
+      answers: cleanAnswersForAPI(),
+      messages: chatAPIMessages(),
+      ...(currentSRD ? { instruction: text, srd: currentSRD } : {}),
+    });
+    mergeExtractedAnswers(data.extractedAnswers);
+    if (Array.isArray(data.missingTopics)) chatMissingTopics = data.missingTopics.map(String).slice(0, 12);
+    if (typeof data.readyToGenerate === 'boolean') chatReadyToGenerate = data.readyToGenerate;
+    chatMessages.push(makeChatMessage('assistant', data.reply || (currentSRD ? 'I updated the requirements document.' : 'What would you like to clarify next?')));
+    chatMessages = chatMessages.slice(-CHAT_MAX_MESSAGES);
+
+    if (currentSRD && data.srd) {
+      currentSRD = data.srd;
+      renderSRD(currentSRD, { scroll: false });
+      await persistSRD(currentSRD, { includeChat: true, clearDraft: false });
+    }
+    renderChatWorkspace();
+    saveChatDraft();
+  } catch (err) {
+    if (err.status === 401) showAuthModal();
+    setChatError(err.status === 403 ? 'This account is not authorized as PocketDevs staff.' : err.message || 'The AI request failed. Please try again.');
+  } finally {
+    setChatBusy(false);
+    renderChatBrief();
+    $('rqChatInput').focus();
+  }
+}
+
+async function generateSRDFromChat() {
+  if (chatBusy || !chatReadyToGenerate || currentSRD) return;
+  setChatError();
+  setChatBusy(true);
+  try {
+    const data = await callRequirementsAPI({
+      action: 'generate',
+      answers: cleanAnswersForAPI(),
+      messages: chatAPIMessages(),
+    });
+    if (!data.srd) throw new Error('No requirements document was returned.');
+    currentSRD = data.srd;
+    chatMessages.push(makeChatMessage('assistant', 'The System Requirements Document is ready below. Keep chatting if you want me to add, remove, or refine anything.'));
+    chatMessages = chatMessages.slice(-CHAT_MAX_MESSAGES);
+    renderChatWorkspace();
+    renderSRD(currentSRD);
+    await persistSRD(currentSRD, { includeChat: true, clearDraft: true });
+  } catch (err) {
+    if (err.status === 401) showAuthModal();
+    setChatError(err.status === 403 ? 'This account is not authorized as PocketDevs staff.' : err.message || 'Generation failed. Please try again.');
+  } finally {
+    setChatBusy(false);
+    renderChatBrief();
+  }
+}
+
 /* ---------- Navigation ---------- */
 function goNext() {
   collectCurrentAnswer();
@@ -539,6 +861,8 @@ function goBack() {
 /* ---------- Review screen ---------- */
 function showReview() {
   collectCurrentAnswer();
+  $('rqModeChooser').hidden = true;
+  $('rqChat').hidden = true;
   $('rqWizard').hidden = true;
   $('rqReview').hidden = false;
 
@@ -600,6 +924,9 @@ function renderAnswersSummary() {
 }
 
 function showWizard() {
+  activeIntakeMode = 'questionnaire';
+  $('rqModeChooser').hidden = true;
+  $('rqChat').hidden = true;
   $('rqReview').hidden = true;
   $('rqWizard').hidden = false;
   renderCurrentQuestion();
@@ -711,7 +1038,11 @@ async function handleAuth(e) {
       errEl.hidden = false;
     } else {
       hideAuthModal();
-      updateAuthState(data?.session);
+      await updateAuthState(data?.session);
+      if (pendingChatAfterAuth) {
+        pendingChatAfterAuth = false;
+        await startAIChat();
+      }
     }
   } catch (err) {
     errEl.textContent = 'Something went wrong. Please try again.';
@@ -729,6 +1060,7 @@ async function updateAuthState(session) {
   $('rqAuthBtn').hidden = isLoggedIn;
   $('rqAuthGreeting').hidden = !isLoggedIn;
   $('rqInviteBtn').hidden = !isLoggedIn || !!clientInviteOwnerId;
+  $('rqChatModeBtn').classList.toggle('rq-mode-card--locked', isLoggedIn && !isStaffSession(session));
   if (isLoggedIn) {
     const fullName = (session.user.user_metadata?.full_name || '').trim();
     const displayName = fullName || (session.user.email || '').split('@')[0];
@@ -753,6 +1085,30 @@ function setStatus(kind, html) {
   el.hidden = false;
 }
 
+async function persistSRD(srd, { includeChat = false, clearDraft = false } = {}) {
+  const previousId = currentSubmissionId;
+  if (includeChat) answers.__aiChat = serializedChatState();
+  const now = new Date();
+  const docNo = `SRD-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  const submissionData = {
+    ...(currentSubmissionId ? { id: currentSubmissionId } : {}),
+    client_name: answers.contactCompany || answers.contactName || '',
+    project_name: answers.projectName || srd.projectName || '',
+    project_type: answers.projectType || '',
+    answers,
+    srd_content: srd,
+    doc_number: docNo,
+    status: 'srd_generated',
+  };
+  try {
+    const { data: saved, error } = await saveQuestionnaire(submissionData);
+    if (error) return false;
+    if (saved?.[0]) currentSubmissionId = saved[0].id;
+    if (clearDraft) clearChatDraft(previousId);
+    return true;
+  } catch { return false; }
+}
+
 /* ---------- Generate SRD ---------- */
 async function generateSRD() {
   const session = currentSession !== undefined ? currentSession : await getSession();
@@ -761,56 +1117,34 @@ async function generateSRD() {
     setStatus('error', 'Please sign in to generate the SRD.');
     return;
   }
+  if (!isStaffSession(session)) {
+    setStatus('error', 'Only verified PocketDevs staff can generate System Requirements Documents.');
+    return;
+  }
 
   const btn = $('rqGenerateBtn');
   btn.disabled = true;
   setStatus('working', '<span class="spinner"></span> Reading your answers and drafting the System Requirements Document… this can take 30–60 seconds.');
 
   try {
-    const res = await fetch(REQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ answers }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      if (res.status === 401) showAuthModal();
-      setStatus('error', `Generation failed: ${esc(data?.error?.message || `HTTP ${res.status}`)}`);
-      return;
-    }
+    const data = await callRequirementsAPI({ action: 'generate', answers: cleanAnswersForAPI() });
     const srd = data.srd;
     if (!srd) { setStatus('error', 'No SRD returned. Please try again.'); return; }
+    currentSRD = srd;
     renderSRD(srd);
     $('rqStatus').hidden = true;
-    // Best-effort save to DB
-    const docNo = `SRD-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`;
-    const submissionData = {
-      ...(currentSubmissionId ? { id: currentSubmissionId } : {}),
-      client_name: answers.contactCompany || answers.contactName || '',
-      project_name: answers.projectName || srd.projectName || '',
-      project_type: answers.projectType || '',
-      answers,
-      srd_content: srd,
-      doc_number: docNo,
-      status: 'srd_generated',
-    };
-    try {
-      const { data: saved, error } = await saveQuestionnaire(submissionData);
-      if (!error && saved && saved[0]) currentSubmissionId = saved[0].id;
-    } catch { /* non-blocking */ }
+    await persistSRD(srd);
   } catch (err) {
-    setStatus('error', `Network error: ${esc(err.message)}`);
+    if (err.status === 401) showAuthModal();
+    setStatus('error', `Generation failed: ${esc(err.message)}`);
   } finally {
     btn.disabled = false;
   }
 }
 
 /* ---------- Render SRD ---------- */
-function renderSRD(srd) {
+function renderSRD(srd, { scroll = true } = {}) {
+  currentSRD = srd;
   const clientName = answers.contactName || '';
   const clientCompany = answers.contactCompany || '';
   const now = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -945,7 +1279,7 @@ function renderSRD(srd) {
   $('rqEditorToolbar').hidden = false;
   $('rqDownloadBtn').hidden = false;
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (scroll) window.scrollTo({ top: activeIntakeMode === 'chat' ? $('rqSRDSection').offsetTop - 80 : 0, behavior: 'smooth' });
 }
 
 /* ---------- PDF Download ---------- */
@@ -1122,6 +1456,9 @@ async function init() {
   if (inviteOwnerId) {
     clientInviteOwnerId = inviteOwnerId;
     document.body.classList.add('client-intake');
+    activeIntakeMode = 'questionnaire';
+    $('rqModeChooser').hidden = true;
+    $('rqWizard').hidden = false;
     renderCurrentQuestion();
     setupWiring();
     return;
@@ -1135,17 +1472,24 @@ async function init() {
     if (submission) {
       currentSubmissionId = submission.id;
       answers = submission.answers || {};
+      currentSRD = submission.srd_content || null;
       isShareMode = true;
-      showReview();
+      if (answers.__aiChat && isStaffSession()) {
+        restoreChatState(answers.__aiChat);
+        await startAIChat();
+      } else {
+        showReview();
+      }
       if (submission.srd_content) {
-        renderSRD(submission.srd_content);
+        renderSRD(submission.srd_content, { scroll: false });
+        if (activeIntakeMode === 'chat') renderChatBrief();
       }
       // Clean up URL param without page reload
       const url = new URL(window.location.href);
       url.searchParams.delete('submission');
       window.history.replaceState({}, '', url.toString());
     } else {
-      renderCurrentQuestion();
+      showModeChooser();
     }
     // Skip the rest of init's auth call since we already did it
     setupWiring();
@@ -1158,10 +1502,10 @@ async function init() {
       isShareMode = true;
       showReview();
     } else {
-      renderCurrentQuestion();
+      showModeChooser();
     }
   } else {
-    renderCurrentQuestion();
+    showModeChooser();
   }
 
   setupWiring();
@@ -1170,6 +1514,24 @@ async function init() {
 function setupWiring() {
   const clientMode = !!clientInviteOwnerId;
   if (!clientMode) initLayout({ activePage: 'requirements' });
+
+  $('rqChatModeBtn').addEventListener('click', startAIChat);
+  $('rqQuestionnaireModeBtn').addEventListener('click', startQuestionnaire);
+  $('rqChatBackBtn').addEventListener('click', showModeChooser);
+  $('rqChatGenerateBtn').addEventListener('click', generateSRDFromChat);
+  $('rqChatForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    sendChatMessage();
+  });
+  $('rqChatInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+  $('rqChatStarters').querySelectorAll('[data-chat-starter]').forEach((btn) => {
+    btn.addEventListener('click', () => sendChatMessage(btn.dataset.chatStarter));
+  });
 
   $('rqNextBtn').addEventListener('click', goNext);
   $('rqBackBtn').addEventListener('click', goBack);

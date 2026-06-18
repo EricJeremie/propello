@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=24" />
-  <link rel="stylesheet" href="requirements.css?v=7" />
+  <link rel="stylesheet" href="requirements.css?v=8" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -39,8 +39,88 @@
   <div class="app-body">
   <main class="rq-main">
 
+    <!-- ===== INTAKE MODE CHOOSER ===== -->
+    <section id="rqModeChooser" class="rq-mode no-print">
+      <div class="rq-mode__eyebrow">Start a requirements document</div>
+      <h1 class="rq-mode__title">How do you want to describe the project?</h1>
+      <p class="rq-mode__intro">Talk it through with the AI requirements analyst, or use the guided questionnaire you already know.</p>
+      <div class="rq-mode__grid">
+        <button id="rqChatModeBtn" class="rq-mode-card rq-mode-card--ai" type="button">
+          <span class="rq-mode-card__icon" aria-hidden="true">AI</span>
+          <span class="rq-mode-card__body">
+            <strong>Chat with AI</strong>
+            <span>Describe the idea naturally. The analyst will ask focused follow-up questions and organize the details for you.</span>
+          </span>
+          <span class="rq-mode-card__arrow" aria-hidden="true">&rarr;</span>
+        </button>
+        <button id="rqQuestionnaireModeBtn" class="rq-mode-card" type="button">
+          <span class="rq-mode-card__icon rq-mode-card__icon--form" aria-hidden="true">01</span>
+          <span class="rq-mode-card__body">
+            <strong>Use questionnaire</strong>
+            <span>Work through the complete guided form one question at a time.</span>
+          </span>
+          <span class="rq-mode-card__arrow" aria-hidden="true">&rarr;</span>
+        </button>
+      </div>
+      <div id="rqModeNotice" class="status status--error rq-mode__notice" hidden></div>
+    </section>
+
+    <!-- ===== AI REQUIREMENTS CHAT ===== -->
+    <section id="rqChat" class="rq-chat no-print" hidden>
+      <div class="rq-chat__topbar">
+        <div>
+          <span class="rq-chat__eyebrow"><span class="rq-chat__live"></span> AI requirements analyst</span>
+          <h1 class="rq-chat__title">Tell me what you want to build</h1>
+        </div>
+        <button id="rqChatBackBtn" class="btn btn--ghost" type="button">Change method</button>
+      </div>
+
+      <div class="rq-chat__layout">
+        <div class="rq-chat__conversation card">
+          <div id="rqChatMessages" class="rq-chat__messages" role="log" aria-live="polite" aria-label="Requirements conversation"></div>
+
+          <div id="rqChatTyping" class="rq-chat__typing" aria-label="AI is thinking" hidden>
+            <span></span><span></span><span></span>
+            <em>Organizing your requirements</em>
+          </div>
+
+          <div id="rqChatStarters" class="rq-chat__starters">
+            <button type="button" data-chat-starter="I want to build a web application for my business.">Web application</button>
+            <button type="button" data-chat-starter="I need an online store where customers can browse products and pay online.">Online store</button>
+            <button type="button" data-chat-starter="I want a mobile app for our customers and staff.">Mobile app</button>
+          </div>
+
+          <div id="rqChatError" class="status status--error rq-chat__error" hidden></div>
+
+          <form id="rqChatForm" class="rq-chat__composer">
+            <textarea id="rqChatInput" rows="2" maxlength="4000" placeholder="Describe the project, features, users, or a change you want..." aria-label="Message the AI requirements analyst"></textarea>
+            <div class="rq-chat__composer-foot">
+              <span id="rqChatHint">Press Enter to send, Shift + Enter for a new line</span>
+              <button id="rqChatSendBtn" class="rq-chat__send" type="submit" aria-label="Send message">Send <span aria-hidden="true">&uarr;</span></button>
+            </div>
+          </form>
+        </div>
+
+        <aside class="rq-chat__brief card">
+          <div class="rq-chat__brief-head">
+            <span>Live project brief</span>
+            <span id="rqChatProgress" class="rq-chat__progress">Just started</span>
+          </div>
+          <div id="rqChatSummary" class="rq-chat__summary">
+            <p class="rq-chat__empty">Project details will appear here as the conversation develops.</p>
+          </div>
+          <div id="rqChatMissingWrap" class="rq-chat__missing">
+            <h3>Still to clarify</h3>
+            <div id="rqChatMissing" class="rq-chat__missing-list"><span>Project overview</span></div>
+          </div>
+          <button id="rqChatGenerateBtn" class="btn btn--primary btn--block rq-chat__generate" type="button" hidden>Generate System Requirements</button>
+          <p id="rqChatGenerateHint" class="rq-chat__generate-hint">The Generate button will appear when the core requirements are clear.</p>
+        </aside>
+      </div>
+    </section>
+
     <!-- ===== WIZARD ===== -->
-    <div id="rqWizard">
+    <div id="rqWizard" hidden>
       <div class="tf-stage" id="rqStepCard"></div>
 
       <div class="tf-progress no-print"><div id="rqProgressBar" class="tf-progress__bar" style="width:0%"></div></div>
@@ -198,6 +278,6 @@
     </div>
   </div>
 
-  <script type="module" src="requirements.js?v=17"></script>
+  <script type="module" src="requirements.js?v=18"></script>
 </body>
 </html>

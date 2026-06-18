@@ -41,6 +41,25 @@ It's a static site — no build step. To go live (one-time import):
 
 After that, every `git push` to `main` auto-deploys (same as the marketplace).
 
+## AI requirements chat staff access
+
+The requirements AI is protected twice: the browser only shows it to staff, and the
+`generate-requirements` Edge Function rejects every account whose protected Supabase
+`app_metadata.role` is not `staff`.
+
+To approve another PocketDevs staff account, open **Supabase → SQL Editor** and run the
+following after replacing the email address. Never put a service-role key in this project.
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+  || '{"role":"staff"}'::jsonb
+where email = 'staff@pocketdevs.ph';
+```
+
+The staff member must sign out and back in once so their browser receives a fresh token
+containing the protected role. Public sign-ups do not receive this role automatically.
+
 Each visitor supplies their own API key (it is never embedded in the page), so the deployed site
 is safe to share publicly.
 
