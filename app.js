@@ -1159,6 +1159,7 @@ const collab = {
   pendingRemoteHtml: null,
   me: null,
   participants: [],
+  remoteCursors: {},
 };
 const COLLAB_BROADCAST_MS = 250;
 const COLLAB_PERSIST_MS = 1500;
@@ -1234,6 +1235,9 @@ function onLocalEdit() {
     clearTimeout(_persistTimer);
     _persistTimer = setTimeout(persistDoc, COLLAB_PERSIST_MS);
   }
+  // My caret moved as I typed, and remote carets after it shifted — sync both.
+  broadcastCursor();
+  scheduleCursorRender();
 }
 
 async function persistDoc() {
@@ -1282,6 +1286,7 @@ function doApplyRemote(html) {
   if (collab.content) collab.content.collabHtml = html;
   collab.applyingRemote = false;
   if (offset != null) restoreCaretOffset(el, offset);
+  scheduleCursorRender(); // the document changed — reposition remote carets
 }
 function saveCaretOffset(root) {
   const sel = window.getSelection();
@@ -1314,16 +1319,20 @@ function restoreCaretOffset(root, offset) {
 async function joinCollab() {
   if (!collab.token || collab.channel) return;
   attachEditListener();
+  attachCursorTracking();
   const me = await ensureIdentity();
   collab.channel = await createDocChannel(collab.token, me, {
     onEdit: (html) => applyRemoteHtml(html),
+    onCursor: (payload) => onRemoteCursor(payload),
     onPresence: (people) => updatePresence(people),
   });
 }
 function leaveCollab() {
   if (collab.channel) { collab.channel.leave(); collab.channel = null; }
   collab.participants = [];
+  collab.remoteCursors = {};
   renderAvatars($('collabAvatars'), []);
+  renderRemoteCursors();
 }
 
 // Presence → de-duplicated participant list → avatar stacks + count text.
@@ -1334,8 +1343,14 @@ function updatePresence(people) {
     seen.add(p.id);
     return true;
   });
+  // Drop cursors for anyone who's no longer present.
+  const presentIds = new Set(collab.participants.map((p) => p.id));
+  Object.keys(collab.remoteCursors).forEach((uid) => {
+    if (!presentIds.has(uid)) delete collab.remoteCursors[uid];
+  });
   renderAvatars($('collabAvatars'), collab.participants);
   renderAvatars($('shareAvatars'), collab.participants);
+  renderRemoteCursors();
   const n = collab.participants.length || 1;
   const a = $('collabPresence');
   if (a) a.textContent = n <= 1 ? 'Just you so far' : `${n} people here now`;
@@ -1354,9 +1369,173 @@ function renderAvatars(el, people) {
   const myId = collab.me && collab.me.id;
   el.innerHTML = shown.map((p) => {
     const you = p.id === myId;
-    const title = esc(p.name || 'Guest') + (you ? ' (you)' : '');
-    return `<span class="collab-avatar${you ? ' collab-avatar--you' : ''}" style="background:${esc(p.color || '#888')}" title="${title}">${esc(initialsFor(p.name))}</span>`;
+    const cls = 'collab-avatar' + (you ? ' collab-avatar--you' : ' collab-avatar--clickable');
+    const cursor = collab.remoteCursors[p.id];
+    const section = cursor && cursor.section ? ` on ${cursor.section}` : '';
+    const title = you ? esc(p.name || 'Guest') + ' (you)' : `Jump to where ${esc(p.name || 'Guest')} is editing${section}`;
+    return `<span class="${cls}" data-uid="${esc(p.id)}" style="background:${esc(p.color || '#888')}" title="${title}">${esc(initialsFor(p.name))}</span>`;
   }).join('') + (extra > 0 ? `<span class="collab-avatar collab-avatar--more" title="${extra} more">+${extra}</span>` : '');
+}
+
+/* ----- Live cursor presence (Google-Docs style) -----
+   Each client broadcasts its caret/selection as absolute text offsets within
+   #proposal. Others render a coloured caret + name flag (and a selection
+   highlight) over the document, and can click an avatar to jump there. The
+   overlay lives in .paper-wrap as a sibling of #proposal, so it is never part
+   of the synced/persisted document HTML. */
+const COLLAB_CURSOR_THROTTLE = 120;
+const COLLAB_CURSOR_STALE_MS = 20000;
+
+function selectionOffsets(root) {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const range = sel.getRangeAt(0);
+  if (!root.contains(range.startContainer) || !root.contains(range.endContainer)) return null;
+  const pre = range.cloneRange();
+  pre.selectNodeContents(root);
+  pre.setEnd(range.startContainer, range.startOffset);
+  const start = pre.toString().length;
+  return { start, end: start + range.toString().length };
+}
+function resolveOffset(root, offset) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let remaining = offset, node = walker.nextNode(), last = null;
+  while (node) {
+    last = node;
+    const len = node.textContent.length;
+    if (remaining <= len) return { node, offset: remaining };
+    remaining -= len; node = walker.nextNode();
+  }
+  return last ? { node: last, offset: last.textContent.length } : null;
+}
+function nearestSectionLabel(node) {
+  let el = node && node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  const sec = el && el.closest ? el.closest('.p-section, .p-cover, .p-sign') : null;
+  if (!sec) return '';
+  const head = sec.querySelector('.p-section__title, .p-cover .p-title, h1, h2, h3');
+  const t = (head && head.textContent) || sec.textContent || '';
+  return t.trim().replace(/\s+/g, ' ');
+}
+
+function normalizeSectionLabel(label) {
+  return String(label || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function findSectionElementByLabel(label) {
+  const want = normalizeSectionLabel(label);
+  if (!want) return null;
+  const sections = Array.from(document.querySelectorAll('#proposal .p-section, #proposal .p-cover, #proposal .p-sign'));
+  for (const sec of sections) {
+    const head = sec.querySelector('.p-section__title, .p-cover .p-title, h1, h2, h3');
+    const text = normalizeSectionLabel((head && head.textContent) || sec.textContent || '');
+    if (text === want || text.startsWith(want) || want.startsWith(text)) return sec;
+  }
+  return null;
+}
+
+let _cursorThrottleAt = 0, _cursorPending = null;
+function broadcastCursor() {
+  if (!collab.channel || collab.applyingRemote) return;
+  const off = selectionOffsets($('proposal'));
+  if (!off) return;
+  const payload = { start: off.start, end: off.end, section: nearestSectionLabel(resolveOffset($('proposal'), off.start) && resolveOffset($('proposal'), off.start).node) };
+  const send = () => { _cursorThrottleAt = Date.now(); if (collab.channel) collab.channel.sendCursor(payload); };
+  if (Date.now() - _cursorThrottleAt >= COLLAB_CURSOR_THROTTLE) send();
+  else { clearTimeout(_cursorPending); _cursorPending = setTimeout(send, COLLAB_CURSOR_THROTTLE); }
+}
+
+function onRemoteCursor(p) {
+  if (!p || !p.from) return;
+  collab.remoteCursors[p.from] = {
+    start: p.start || 0, end: p.end || 0, section: p.section || '',
+    name: p.name || 'Guest', color: p.color || '#888', at: Date.now(),
+  };
+  scheduleCursorRender();
+}
+
+function ensureCursorOverlay() {
+  let overlay = document.getElementById('collabCursors');
+  if (!overlay) {
+    const wrap = document.querySelector('.paper-wrap');
+    if (!wrap) return null;
+    overlay = document.createElement('div');
+    overlay.id = 'collabCursors';
+    overlay.className = 'collab-cursors no-print';
+    wrap.appendChild(overlay);
+  }
+  return overlay;
+}
+let _cursorRaf = 0;
+function scheduleCursorRender() {
+  cancelAnimationFrame(_cursorRaf);
+  _cursorRaf = requestAnimationFrame(renderRemoteCursors);
+}
+function renderRemoteCursors() {
+  const overlay = ensureCursorOverlay();
+  if (!overlay) return;
+  const editor = $('proposal');
+  const wrapRect = overlay.parentElement.getBoundingClientRect();
+  const now = Date.now();
+  let html = '';
+  Object.keys(collab.remoteCursors).forEach((uid) => {
+    const c = collab.remoteCursors[uid];
+    if (now - c.at > COLLAB_CURSOR_STALE_MS) { delete collab.remoteCursors[uid]; return; }
+    const startPos = resolveOffset(editor, c.start);
+    if (!startPos) return;
+    // Selection highlight (when they have text selected)
+    if (c.end > c.start) {
+      const endPos = resolveOffset(editor, c.end);
+      if (endPos) {
+        try {
+          const r = document.createRange();
+          r.setStart(startPos.node, startPos.offset);
+          r.setEnd(endPos.node, endPos.offset);
+          for (const rect of r.getClientRects()) {
+            html += `<div class="collab-sel" style="left:${rect.left - wrapRect.left}px;top:${rect.top - wrapRect.top}px;width:${rect.width}px;height:${rect.height}px;background:${esc(c.color)}"></div>`;
+          }
+        } catch { /* ignore */ }
+      }
+    }
+    // Caret bar + name flag at the selection start
+    const cr = document.createRange();
+    cr.setStart(startPos.node, startPos.offset); cr.collapse(true);
+    const rects = cr.getClientRects();
+    const rect = rects.length ? rects[0] : (startPos.node.parentElement && startPos.node.parentElement.getBoundingClientRect());
+    if (!rect) return;
+    html += `<div class="collab-caret" data-uid="${esc(uid)}" style="left:${rect.left - wrapRect.left}px;top:${rect.top - wrapRect.top}px;height:${rect.height || 16}px;background:${esc(c.color)}">`
+      + `<span class="collab-caret__flag" style="background:${esc(c.color)}">${esc(c.name)}</span></div>`;
+  });
+  overlay.innerHTML = html;
+}
+
+function jumpToUser(uid) {
+  const c = collab.remoteCursors[uid];
+  if (!c) { showToast("They haven't placed their cursor in the document yet."); return; }
+  const section = findSectionElementByLabel(c.section);
+  const pos = resolveOffset($('proposal'), c.start);
+  const target = section || (pos && (pos.node.nodeType === Node.TEXT_NODE ? pos.node.parentElement : pos.node));
+  if (!target) return;
+  if (target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (section) {
+    section.classList.add('collab-section-target');
+    setTimeout(() => section.classList.remove('collab-section-target'), 1800);
+  }
+  setTimeout(() => {
+    renderRemoteCursors();
+    const caret = document.querySelector(`#collabCursors .collab-caret[data-uid="${uid}"]`);
+    if (caret) { caret.classList.add('collab-caret--flash'); setTimeout(() => caret.classList.remove('collab-caret--flash'), 1700); }
+  }, 350);
+}
+
+let _cursorTrackingAttached = false;
+function attachCursorTracking() {
+  if (_cursorTrackingAttached) return;
+  _cursorTrackingAttached = true;
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount && $('proposal').contains(sel.anchorNode)) broadcastCursor();
+  });
+  window.addEventListener('resize', scheduleCursorRender);
 }
 
 /* ----- Owner: share button + modal ----- */
@@ -1953,6 +2132,20 @@ function init() {
       }).catch(() => { /* clipboard blocked — link is still selected */ });
     });
     $('stopSharingBtn').addEventListener('click', handleStopSharing);
+
+    // Click a collaborator's avatar to jump to where they're editing.
+    ['collabAvatars', 'shareAvatars'].forEach((id) => {
+      const c = $(id);
+      if (!c) return;
+      c.addEventListener('click', (e) => {
+        const a = e.target.closest('.collab-avatar[data-uid]');
+        if (!a) return;
+        const uid = a.dataset.uid;
+        if (collab.me && uid === collab.me.id) return;
+        if ($('shareModal').classList.contains('modal--visible')) closeShareModal();
+        jumpToUser(uid);
+      });
+    });
 
     // Guest entry: ?share=<token> opens a shared doc with no account required.
     const shareToken = new URLSearchParams(window.location.search).get('share');

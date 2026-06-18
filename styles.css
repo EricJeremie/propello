@@ -402,6 +402,35 @@ button, input, textarea, select { font-family: inherit; }
   background: white; color: #1e293b;
   min-height: 297mm; padding: 20mm;
   box-shadow: 0 1px 3px rgb(20 22 26 / 0.08), 0 24px 60px rgb(20 22 26 / 0.12);
+  position: relative; /* anchor for the live-cursor overlay */
+}
+
+/* Live collaborator cursors */
+.collab-cursors { position: absolute; inset: 0; pointer-events: none; z-index: 6; overflow: hidden; }
+.collab-caret { position: absolute; width: 2px; border-radius: 1px; }
+.collab-caret__flag {
+  position: absolute; top: -1.15rem; left: -1px; white-space: nowrap;
+  font-size: 0.625rem; font-weight: 600; color: #fff; padding: 1px 5px;
+  border-radius: 4px 4px 4px 0; line-height: 1.35; box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+}
+.collab-sel { position: absolute; opacity: 0.16; border-radius: 2px; }
+.collab-avatar--clickable { cursor: pointer; }
+.collab-section-target {
+  position: relative;
+  outline: 2px solid rgba(242, 56, 74, 0.38);
+  outline-offset: 8px;
+  border-radius: 12px;
+  animation: collab-section-pulse 1.8s ease;
+}
+.collab-caret--flash { animation: collab-caret-flash 1.6s ease; }
+.collab-caret--flash .collab-caret__flag { animation: collab-flag-pop 1.6s ease; }
+@keyframes collab-flag-pop { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.35); } }
+@keyframes collab-caret-flash { 0%, 100% { width: 2px; } 25%, 60% { width: 4px; } }
+@keyframes collab-section-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(242, 56, 74, 0.0); background: transparent; }
+  20% { background: rgba(242, 56, 74, 0.04); }
+  60% { box-shadow: 0 0 0 10px rgba(242, 56, 74, 0.04); }
+  100% { box-shadow: 0 0 0 0 rgba(242, 56, 74, 0.0); background: transparent; }
 }
 .proposal { font-family: 'Inter', sans-serif; font-size: 11pt; line-height: 1.4; }
 

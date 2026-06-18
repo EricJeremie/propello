@@ -369,9 +369,9 @@ export async function saveSharedDoc(token, content) {
   }
 }
 
-/* Realtime channel for a shared doc. Broadcasts edits and tracks presence.
-   handlers: { onEdit(html, fromId), onPresence(participants) }.
-   Returns { broadcast(html), leave() } or null if realtime is unavailable. */
+/* Realtime channel for a shared doc. Broadcasts edits + cursors, tracks presence.
+   handlers: { onEdit(html, fromId), onCursor(payload), onPresence(participants) }.
+   Returns { broadcast(html), sendCursor(data), leave() } or null if unavailable. */
 export async function createDocChannel(token, me, handlers = {}) {
   const sb = await getClient();
   if (!sb) return null;
@@ -384,6 +384,12 @@ export async function createDocChannel(token, me, handlers = {}) {
       const p = msg.payload || {};
       if (p.from === me.id) return;
       handlers.onEdit && handlers.onEdit(p.html, p.from);
+    });
+
+    channel.on('broadcast', { event: 'cursor' }, (msg) => {
+      const p = msg.payload || {};
+      if (p.from === me.id) return;
+      handlers.onCursor && handlers.onCursor(p);
     });
 
     if (handlers.onPresence) {
@@ -409,6 +415,9 @@ export async function createDocChannel(token, me, handlers = {}) {
     return {
       broadcast(html) {
         channel.send({ type: 'broadcast', event: 'edit', payload: { html, from: me.id } });
+      },
+      sendCursor(data) {
+        channel.send({ type: 'broadcast', event: 'cursor', payload: { ...data, from: me.id, name: me.name, color: me.color } });
       },
       async leave() {
         // Flush the presence "leave" before tearing down the socket, so other
