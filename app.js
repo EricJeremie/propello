@@ -614,9 +614,13 @@ function renderInvoice(d) {
     <table class="p-table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
     <tbody>${rows}<tr class="p-table__total"><td colspan="3">Total</td><td class="num">${formatAmount(total, prefix)}</td></tr></tbody></table></section>`;
 
-  const paymentSection = m.paymentDetails
-    ? `<section class="p-section">${sectionHead(2, 'Payment Details')}<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div></section>`
-    : '';
+  const paymentSection = `
+    <section class="p-section">
+      ${sectionHead(2, 'Payment Details')}
+      ${m.paymentDetails ? `<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div>` : '<div class="p-lede"><p>Payment can be made through the following accounts.</p></div>'}
+      ${paymentAccounts()}
+      ${Array.isArray(d.paymentOptions) && d.paymentOptions.length ? list(d.paymentOptions) : ''}
+    </section>`;
 
   const footer = `<div class="p-docfooter"><span><b>PocketDevs</b></span><span>Confidential</span><span>www.pocketdevs.ph</span></div>`;
 
