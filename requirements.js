@@ -733,13 +733,13 @@ function setChatError(message = '') {
 
 async function callRequirementsAPI(payload) {
   const session = currentSession !== undefined ? currentSession : await getSession();
-  if (!session?.access_token) throw Object.assign(new Error('Please sign in to continue.'), { status: 401 });
+  const authToken = String(session && session.access_token ? session.access_token : '').replace(/\s+/g, '').trim();
+  if (!authToken) throw Object.assign(new Error('Please sign in to continue.'), { status: 401 });
   const res = await fetch(REQ_API_URL, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      authorization: `Bearer ${session.access_token}`,
+      authorization: `Bearer ${authToken}`,
     },
     body: JSON.stringify(payload),
   });

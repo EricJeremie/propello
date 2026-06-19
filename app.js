@@ -255,7 +255,8 @@ async function generate() {
   // server-side and requires a signed-in user. We need a valid Supabase
   // session token to authorize the call.
   const session = await getSession();
-  if (!session || !session.access_token) {
+  const authToken = String(session && session.access_token ? session.access_token : '').replace(/\s+/g, '').trim();
+  if (!authToken) {
     showAuthModal();
     setStatus('error', 'Please sign in to generate a proposal.');
     return;
@@ -317,8 +318,7 @@ async function generate() {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'authorization': `Bearer ${session.access_token}`,
+        'authorization': `Bearer ${authToken}`,
       },
       body: JSON.stringify(body),
     });
