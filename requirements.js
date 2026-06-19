@@ -1,5 +1,5 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js';
-import { initLayout } from './nav.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js?v=19';
+import { initLayout } from './nav.js?v=19';
 
 const REQ_API_URL = '/api/generate-requirements';
 

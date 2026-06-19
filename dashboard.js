@@ -1,11 +1,11 @@
 'use strict';
 
-import { initLayout } from './nav.js';
+import { initLayout } from './nav.js?v=8';
 import {
   getSession, signIn, signUp, signOut, onAuthChange,
   fetchUserProposals, fetchUserQuestionnaires,
   deleteProposal, deleteQuestionnaire,
-} from './supabase.js';
+} from './supabase.js?v=8';
 import { createQuickSearch } from './quick-search.js';
 
 const $ = (id) => document.getElementById(id);

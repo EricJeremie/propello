@@ -1,5 +1,5 @@
 'use strict';
-import { signOut, onAuthChange, getSession } from './supabase.js';
+import { signOut, onAuthChange, getSession } from './supabase.js?v=27';
 
 // Inject the full app shell: sidebar + mobile top bar
 export function initLayout({ activePage = '', onSettings = null } = {}) {
