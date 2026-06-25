@@ -714,13 +714,15 @@ function addProposalPriceRow(values = {}) {
   const row = document.createElement('div');
   row.className = 'proposal-price-item';
   row.innerHTML = `
-    <input class="input proposal-price-item__name" placeholder="Line item" />
+    <div class="proposal-price-item__header">
+      <input class="input proposal-price-item__name" placeholder="Line item" />
+      <button type="button" class="line-item__remove" aria-label="Remove pricing item">&times;</button>
+    </div>
     <input class="input proposal-price-item__basis" placeholder="Basis" />
     <div class="proposal-price-item__money">
-      <span>${esc(moneyPrefix())}</span>
+      <span class="proposal-price-item__prefix">${esc(moneyPrefix())}</span>
       <input class="input proposal-price-item__amount" type="number" min="0" step="1000" placeholder="0" />
     </div>
-    <button type="button" class="line-item__remove" aria-label="Remove pricing item">&times;</button>
   `;
   row.querySelector('.proposal-price-item__name').value = values.item || '';
   row.querySelector('.proposal-price-item__basis').value = values.basis || '';
