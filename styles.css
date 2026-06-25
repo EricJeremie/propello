@@ -125,6 +125,18 @@ button, input, textarea, select { font-family: inherit; }
 .internal-tab:hover { color: var(--text); }
 .internal-tab--active { background: var(--bg-card); color: var(--rausch); box-shadow: var(--shadow); }
 .internal-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+.internal-panel__description {
+  margin: 0;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--rausch);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
 .internal-preview {
   border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle);
   padding: 0.75rem; min-height: 72px;

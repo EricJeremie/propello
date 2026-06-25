@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=33" />
+  <link rel="stylesheet" href="styles.css?v=34" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -226,6 +226,7 @@
         </div>
 
         <div id="internalPanelTemplates" class="internal-panel" data-internal-panel="templates">
+          <p class="internal-panel__description">Start from a proven proposal structure so the draft has the right sections and tone before you generate.</p>
           <div class="field">
             <label class="label">Template</label>
             <select id="templateSelect" class="input"></select>
@@ -239,6 +240,7 @@
         </div>
 
         <div id="internalPanelBlocks" class="internal-panel" data-internal-panel="blocks" hidden>
+          <p class="internal-panel__description">Add reusable wording for common sections like timelines, deliverables, assumptions, or support terms.</p>
           <div class="field">
             <label class="label">Block type</label>
             <select id="blockCategorySelect" class="input"></select>
@@ -252,6 +254,7 @@
         </div>
 
         <div id="internalPanelPricing" class="internal-panel" data-internal-panel="pricing" hidden>
+          <p class="internal-panel__description">Build the project price, payment breakdown, and scope guardrails so the proposal is clear on cost and inclusions.</p>
           <div class="field">
             <label class="label">Package</label>
             <select id="pricingPackageSelect" class="input"></select>
@@ -273,6 +276,7 @@
         </div>
 
         <div id="internalPanelReview" class="internal-panel" data-internal-panel="review" hidden>
+          <p class="internal-panel__description">Track whether the proposal is still a draft, ready for review, or approved for sending to the client.</p>
           <div id="approvalSummary" class="approval-summary"></div>
           <div class="approval-actions">
             <button type="button" class="btn btn--ghost btn--sm" data-approval-status="draft">Draft</button>
@@ -287,6 +291,7 @@
         </div>
 
         <div id="internalPanelVersions" class="internal-panel" data-internal-panel="versions" hidden>
+          <p class="internal-panel__description">Save snapshots of the proposal so you can compare changes or return to an earlier version later.</p>
           <div class="internal-mini-form">
             <input id="versionLabelInput" class="input" placeholder="Snapshot label" />
             <button id="saveVersionBtn" type="button" class="btn btn--primary btn--sm">Save snapshot</button>
@@ -540,6 +545,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=33"></script>
+  <script type="module" src="app.js?v=34"></script>
 </body>
 </html>
