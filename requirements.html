@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css?v=24" />
-  <link rel="stylesheet" href="requirements.css?v=8" />
+  <link rel="stylesheet" href="requirements.css?v=9" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -43,12 +43,12 @@
     <section id="rqModeChooser" class="rq-mode no-print">
       <div class="rq-mode__eyebrow">Start a requirements document</div>
       <h1 class="rq-mode__title">How do you want to describe the project?</h1>
-      <p class="rq-mode__intro">Talk it through with the AI requirements analyst, or use the guided questionnaire you already know.</p>
+      <p class="rq-mode__intro">Choose the AI assistant if you want to explain the project naturally, or choose the normal step-by-step questions if you prefer a guided form.</p>
       <div class="rq-mode__grid">
         <button id="rqChatModeBtn" class="rq-mode-card rq-mode-card--ai" type="button">
           <span class="rq-mode-card__icon" aria-hidden="true">AI</span>
           <span class="rq-mode-card__body">
-            <strong>Chat with AI</strong>
+            <strong>Use AI assistant</strong>
             <span>Describe the idea naturally. The analyst will ask focused follow-up questions and organize the details for you.</span>
           </span>
           <span class="rq-mode-card__arrow" aria-hidden="true">&rarr;</span>
@@ -56,8 +56,8 @@
         <button id="rqQuestionnaireModeBtn" class="rq-mode-card" type="button">
           <span class="rq-mode-card__icon rq-mode-card__icon--form" aria-hidden="true">01</span>
           <span class="rq-mode-card__body">
-            <strong>Use questionnaire</strong>
-            <span>Work through the complete guided form one question at a time.</span>
+            <strong>Answer normal questions</strong>
+            <span>Work through the complete guided form one question at a time, with no AI chat.</span>
           </span>
           <span class="rq-mode-card__arrow" aria-hidden="true">&rarr;</span>
         </button>
@@ -278,6 +278,6 @@
     </div>
   </div>
 
-  <script type="module" src="requirements.js?v=22"></script>
+  <script type="module" src="requirements.js?v=23"></script>
 </body>
 </html>

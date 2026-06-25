@@ -354,6 +354,10 @@ function isStaffSession(session = currentSession) {
   return session?.user?.app_metadata?.role === 'staff';
 }
 
+function isClientInviteMode() {
+  return !!clientInviteOwnerId;
+}
+
 function makeChatMessage(role, content) {
   return {
     id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -642,13 +646,13 @@ function startQuestionnaire() {
 }
 
 async function startAIChat() {
-  if (currentSession === undefined) await updateAuthState();
-  if (!currentSession) {
+  if (!isClientInviteMode() && currentSession === undefined) await updateAuthState();
+  if (!isClientInviteMode() && !currentSession) {
     pendingChatAfterAuth = true;
     showAuthModal();
     return;
   }
-  if (!isStaffSession()) {
+  if (!isClientInviteMode() && !isStaffSession()) {
     const notice = $('rqModeNotice');
     notice.textContent = 'AI requirements chat is restricted to verified PocketDevs staff accounts.';
     notice.hidden = false;
@@ -660,6 +664,7 @@ async function startAIChat() {
   $('rqWizard').hidden = true;
   $('rqReview').hidden = true;
   $('rqChat').hidden = false;
+  $('rqChatGenerateBtn').textContent = isClientInviteMode() ? 'Review my answers' : 'Generate System Requirements';
   if (currentSRD) $('rqSRDSection').hidden = false;
   if (!chatMessages.length && !answers.__aiChat) restoreLocalChatDraft();
   ensureInitialChatMessage();
@@ -707,11 +712,13 @@ function renderChatBrief() {
 
   const userTurns = chatMessages.filter((m) => m.role === 'user').length;
   $('rqChatProgress').textContent = chatReadyToGenerate ? 'Ready to generate' : userTurns ? `${facts.length} details captured` : 'Just started';
-  $('rqChatGenerateBtn').hidden = !chatReadyToGenerate || !!currentSRD;
+  $('rqChatGenerateBtn').hidden = !chatReadyToGenerate || (!isClientInviteMode() && !!currentSRD);
   $('rqChatGenerateBtn').disabled = chatBusy;
   $('rqChatGenerateHint').textContent = currentSRD
     ? 'Continue chatting to revise the generated document.'
-    : chatReadyToGenerate
+    : chatReadyToGenerate && isClientInviteMode()
+      ? 'Review the captured answers, then send them to PocketDevs.'
+      : chatReadyToGenerate
       ? 'Review the brief, then generate the complete document.'
       : 'The Generate button will appear when the core requirements are clear.';
   $('rqChatInput').placeholder = currentSRD
@@ -739,18 +746,22 @@ function setChatError(message = '') {
 }
 
 async function callRequirementsAPI(payload) {
-  const session = currentSession !== undefined ? currentSession : await getSession();
+  const canUseClientInvite = isClientInviteMode() && payload?.action === 'interview';
+  const session = canUseClientInvite ? null : (currentSession !== undefined ? currentSession : await getSession());
   const authToken = normalizeBearerToken(session && session.access_token ? session.access_token : '');
-  if (!authToken) throw Object.assign(new Error('Please sign in to continue.'), { status: 401 });
+  if (!canUseClientInvite && !authToken) throw Object.assign(new Error('Please sign in to continue.'), { status: 401 });
+  const body = canUseClientInvite
+    ? { ...payload, clientInviteOwnerId }
+    : payload;
   let res;
   try {
     res = await fetch(REQ_API_URL, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        authorization: `Bearer ${authToken}`,
+        ...(authToken ? { authorization: `Bearer ${authToken}` } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
   } catch (err) {
     if (/pattern|header|invalid/i.test(err && err.message ? err.message : '')) {
@@ -781,7 +792,7 @@ async function sendChatMessage(messageText = null) {
     setChatError(`Messages can be up to ${CHAT_MAX_MESSAGE_LENGTH.toLocaleString()} characters.`);
     return;
   }
-  if (!isStaffSession()) {
+  if (!isClientInviteMode() && !isStaffSession()) {
     setChatError('This feature requires a verified PocketDevs staff account.');
     return;
   }
@@ -827,6 +838,10 @@ async function sendChatMessage(messageText = null) {
 
 async function generateSRDFromChat() {
   if (chatBusy || !chatReadyToGenerate || currentSRD) return;
+  if (isClientInviteMode()) {
+    showReview();
+    return;
+  }
   setChatError();
   setChatBusy(true);
   try {
@@ -1473,10 +1488,7 @@ async function init() {
   if (inviteOwnerId) {
     clientInviteOwnerId = inviteOwnerId;
     document.body.classList.add('client-intake');
-    activeIntakeMode = 'questionnaire';
-    $('rqModeChooser').hidden = true;
-    $('rqWizard').hidden = false;
-    renderCurrentQuestion();
+    showModeChooser();
     setupWiring();
     return;
   }

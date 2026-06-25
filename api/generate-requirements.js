@@ -153,8 +153,8 @@ function sanitizeMessages(input) {
     .slice(-30);
 }
 
-function formatConversation(messages) {
-  return messages.map((m) => `${m.role === 'user' ? 'Staff' : 'Analyst'}: ${m.content}`).join('\n\n');
+function formatConversation(messages, userLabel = 'Staff') {
+  return messages.map((m) => `${m.role === 'user' ? userLabel : 'Analyst'}: ${m.content}`).join('\n\n');
 }
 
 function factsToAnswers(value) {
@@ -168,6 +168,10 @@ function factsToAnswers(value) {
     if (allowed.has(key) && val) extracted[key] = val.slice(0, 5000);
   }
   return extracted;
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
 }
 
 async function callGemini(key, prompt, schema, maxOutputTokens) {
@@ -223,13 +227,6 @@ async function handle(req, res) {
   const contentLength = Number(req.headers['content-length'] || 0);
   if (contentLength > 250_000) return sendJson(res, { error: { message: 'Request body is too large.' } }, 413);
 
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  const sessionCheck = await verifySupabaseSession(token, { staffOnly: true });
-  if (!sessionCheck.ok) {
-    return sendJson(res, { error: { message: sessionCheck.message } }, sessionCheck.status);
-  }
-
   let body;
   try {
     body = JSON.parse(await readRawBody(req));
@@ -247,15 +244,26 @@ async function handle(req, res) {
     return sendJson(res, { error: { message: 'Unsupported requirements action.' } }, 400);
   }
 
+  const isClientInviteInterview = action === 'interview' && isUuid(body.clientInviteOwnerId);
+  if (!isClientInviteInterview) {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    const sessionCheck = await verifySupabaseSession(token, { staffOnly: true });
+    if (!sessionCheck.ok) {
+      return sendJson(res, { error: { message: sessionCheck.message } }, sessionCheck.status);
+    }
+  }
+
   const answers = sanitizeAnswers(body.answers);
   const messages = sanitizeMessages(body.messages);
 
   if (action === 'interview') {
     if (!messages.some((m) => m.role === 'user')) return sendJson(res, { error: { message: 'Send at least one project description.' } }, 400);
+    const participantLabel = isClientInviteInterview ? 'Client' : 'Staff';
     const prompt = `Act as a warm, precise requirements analyst conducting a conversational project intake. Do not write the SRD yet.
 
 Your job for this turn:
-1. Extract only facts the staff member explicitly stated or confirmed. Map them to these supported keys: ${ANSWER_KEYS.join(', ')}.
+1. Extract only facts the ${participantLabel.toLowerCase()} explicitly stated or confirmed. Map them to these supported keys: ${ANSWER_KEYS.join(', ')}.
 2. Ask exactly ONE focused follow-up question about the most important missing topic. Keep the reply concise and conversational.
 3. Set readyToGenerate to true only when these core areas are sufficiently clear: product type and purpose; users and roles; core workflows/features; integrations or explicit absence of them; expected scale/devices; security or compliance needs; timeline/budget/constraints.
 4. When ready, do not ask another question. Instead, briefly summarize the agreed scope, say it is ready to generate, return no missing topics, and set readyToGenerate to true.
@@ -265,7 +273,7 @@ Already captured facts:
 ${formatAnswers(answers) || '[None yet]'}
 
 Conversation:
-${formatConversation(messages)}`;
+${formatConversation(messages, participantLabel)}`;
     const result = await callGemini(key, prompt, INTERVIEW_SCHEMA, 3000);
     if (result.error) return sendJson(res, { error: { message: result.error } }, result.status || 502);
     return sendJson(res, {
