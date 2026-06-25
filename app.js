@@ -142,6 +142,127 @@ const paras = (s) => String(s || '').split(/\n{2,}/).map((p) => p.trim()).filter
 /* ---------- State ---------- */
 let pdfFile = null;
 let pdfName = null;
+const LS_INTERNAL_TEMPLATES = 'pdv_internal_templates';
+const LS_INTERNAL_BLOCKS = 'pdv_internal_blocks';
+const MAX_VERSIONS = 15;
+
+const TEMPLATE_LIBRARY = [
+  {
+    id: 'web-build',
+    name: 'Web Build',
+    summary: 'Marketing site, landing page, CMS, analytics, and launch support.',
+    proposalName: 'Website Development Proposal',
+    notes: 'Use a practical web delivery structure: discovery, UX/content planning, design, development, QA, launch, and post-launch support. Emphasize conversion, maintainability, page speed, and clean handoff.',
+    scopeItems: ['Discovery and sitemap alignment', 'Responsive UI implementation', 'CMS/content workflow setup', 'Analytics and launch QA'],
+    priceItems: [
+      { item: 'Discovery and planning', basis: 'Fixed project phase', amount: 25000 },
+      { item: 'Design and development', basis: 'Core implementation', amount: 145000 },
+      { item: 'QA, launch, and handoff', basis: 'Final delivery phase', amount: 30000 },
+    ],
+  },
+  {
+    id: 'internal-system',
+    name: 'Internal System',
+    summary: 'Operational app with roles, workflows, dashboards, and admin controls.',
+    proposalName: 'Internal System Development Proposal',
+    notes: 'Frame the proposal around operational efficiency, role-based access, workflow visibility, data quality, dashboards, and a maintainable release plan. Include assumptions for integrations, migration, and user acceptance testing.',
+    scopeItems: ['Role-based internal workflows', 'Admin dashboard and reporting', 'Data model and audit-friendly records', 'UAT, training, and release support'],
+    priceItems: [
+      { item: 'Requirements and solution design', basis: 'Workshops and architecture', amount: 45000 },
+      { item: 'Core app build', basis: 'Internal workflow implementation', amount: 220000 },
+      { item: 'Testing, deployment, and training', basis: 'Release support', amount: 55000 },
+    ],
+  },
+  {
+    id: 'automation-ai',
+    name: 'Automation + AI',
+    summary: 'AI-assisted workflows, document generation, automations, and staff tools.',
+    proposalName: 'Automation and AI Workflow Proposal',
+    notes: 'Position AI as an internal productivity layer with human review. Be explicit about source data, approval checkpoints, prompt/version controls, and limits where staff confirmation is required.',
+    scopeItems: ['Workflow mapping and automation design', 'AI-assisted draft generation with review gates', 'Reusable prompts and content controls', 'Monitoring and iteration support'],
+    priceItems: [
+      { item: 'Workflow discovery', basis: 'Process mapping and recommendations', amount: 35000 },
+      { item: 'Automation and AI assistant build', basis: 'Implementation package', amount: 185000 },
+      { item: 'Testing and enablement', basis: 'Staff rollout support', amount: 40000 },
+    ],
+  },
+];
+
+const CONTENT_BLOCK_LIBRARY = [
+  {
+    id: 'scope-control',
+    category: 'Scope',
+    title: 'Scope Control',
+    body: 'Any work outside the agreed scope will be assessed as a change request. PocketDevs will provide an impact estimate for cost, timeline, and deliverables before proceeding.',
+  },
+  {
+    id: 'client-responsibilities',
+    category: 'Scope',
+    title: 'Client Responsibilities',
+    body: 'The client will provide timely access to content, brand assets, subject-matter reviewers, and required accounts. Timeline assumptions depend on review cycles being completed within the agreed windows.',
+  },
+  {
+    id: 'case-study-internal-tools',
+    category: 'Proof',
+    title: 'Internal Tools Reference',
+    body: 'PocketDevs has delivered internal tools that reduce manual coordination, consolidate operational records, and give management clearer visibility into work status and handoffs.',
+  },
+  {
+    id: 'support-boundary',
+    category: 'Support',
+    title: 'Support Boundary',
+    body: 'Post-launch support covers bug fixes and minor guidance for the delivered scope. New features, major workflow changes, and third-party platform changes are quoted separately.',
+  },
+  {
+    id: 'data-security',
+    category: 'Risk',
+    title: 'Data and Access',
+    body: 'Access controls, data handling, and administrative permissions will be configured according to the agreed user roles. Sensitive credentials remain with the client or approved system owners.',
+  },
+];
+
+const PRICING_PACKAGES = [
+  { id: 'custom', name: 'Custom', scopeItems: [], priceItems: [] },
+  {
+    id: 'starter',
+    name: 'Starter',
+    scopeItems: ['Focused MVP scope', 'One primary user flow', 'Standard launch QA'],
+    priceItems: [
+      { item: 'MVP planning', basis: 'Fixed scope', amount: 20000 },
+      { item: 'MVP build', basis: 'Core implementation', amount: 95000 },
+      { item: 'Launch QA', basis: 'Final validation', amount: 20000 },
+    ],
+  },
+  {
+    id: 'growth',
+    name: 'Growth',
+    scopeItems: ['Multiple user roles', 'Admin workflows', 'Reporting and export needs', 'Guided rollout support'],
+    priceItems: [
+      { item: 'Solution design', basis: 'Workshops and technical planning', amount: 45000 },
+      { item: 'Product build', basis: 'Design and engineering package', amount: 230000 },
+      { item: 'QA and rollout', basis: 'Testing, fixes, and handoff', amount: 55000 },
+    ],
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    scopeItems: ['Complex workflow coverage', 'Integrations or data migration', 'Advanced admin/reporting', 'Priority launch support'],
+    priceItems: [
+      { item: 'Discovery and architecture', basis: 'Senior planning package', amount: 75000 },
+      { item: 'Full implementation', basis: 'Multi-workflow delivery', amount: 390000 },
+      { item: 'Launch, training, and stabilization', basis: 'Extended support package', amount: 85000 },
+    ],
+  },
+];
+
+const APPROVAL_LABELS = {
+  draft: 'Draft',
+  review: 'In review',
+  approved: 'Approved',
+};
+
+let selectedBlockIds = new Set();
+let workflowDirty = false;
 
 /* ---------- Status ---------- */
 function setStatus(kind, html) {
@@ -234,6 +355,7 @@ function collectIntake() {
     budget: $('f_budget').value.trim(),
     paymentDetails: $('f_paymentDetails').value.trim(),
     proposalName: $('f_proposalName').value.trim(),
+    internal: collectInternalControls(),
   };
 }
 
@@ -253,6 +375,609 @@ function collectInvoiceIntake() {
     paymentDetails: $('f_inv_paymentDetails').value.trim(),
     invoiceName: $('f_inv_name').value.trim(),
   };
+}
+
+/* ---------- Internal proposal toolkit ---------- */
+function readJsonList(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeJsonList(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage is optional */ }
+}
+
+function uid(prefix) {
+  const id = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random().toString(16).slice(2);
+  return `${prefix}-${id}`;
+}
+
+function allTemplates() {
+  return [...TEMPLATE_LIBRARY, ...readJsonList(LS_INTERNAL_TEMPLATES)];
+}
+
+function allContentBlocks() {
+  return [...CONTENT_BLOCK_LIBRARY, ...readJsonList(LS_INTERNAL_BLOCKS)];
+}
+
+function templateById(id) {
+  if (!id) return null;
+  return allTemplates().find((t) => t.id === id) || null;
+}
+
+function blockById(id) {
+  return allContentBlocks().find((b) => b.id === id) || null;
+}
+
+function moneyPrefix() {
+  return currencySymbol() || $('f_currency')?.value || '';
+}
+
+function formatMoney(n) {
+  const prefix = moneyPrefix();
+  return `${prefix}${Math.round(Number(n) || 0).toLocaleString('en-US')}`;
+}
+
+function pricingRowsFromDom() {
+  const rows = [];
+  const root = $('proposalPriceItems');
+  if (!root) return rows;
+  root.querySelectorAll('.proposal-price-item').forEach((row) => {
+    const item = row.querySelector('.proposal-price-item__name').value.trim();
+    const basis = row.querySelector('.proposal-price-item__basis').value.trim();
+    const amount = Number(row.querySelector('.proposal-price-item__amount').value) || 0;
+    if (!item && !basis && !amount) return;
+    rows.push({ item, basis, amount });
+  });
+  return rows;
+}
+
+function pricingTotal(items = pricingRowsFromDom()) {
+  return items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+}
+
+function scopeItemsFromDom() {
+  const root = $('scopeItems');
+  if (!root) return [];
+  return Array.from(root.querySelectorAll('.scope-item')).map((el) => el.dataset.value || '').filter(Boolean);
+}
+
+function collectInternalControls() {
+  const template = templateById($('templateSelect')?.value);
+  const blocks = allContentBlocks()
+    .filter((block) => selectedBlockIds.has(block.id))
+    .map((block) => ({ id: block.id, category: block.category, title: block.title, body: block.body }));
+  const priceItems = pricingRowsFromDom();
+  return {
+    template: template ? { id: template.id, name: template.name, summary: template.summary, notes: template.notes } : null,
+    contentBlocks: blocks,
+    pricing: {
+      packageId: $('pricingPackageSelect')?.value || 'custom',
+      scopeItems: scopeItemsFromDom(),
+      lineItems: priceItems,
+      total: pricingTotal(priceItems),
+      currency: $('f_currency')?.value || 'PHP',
+      currencySymbol: moneyPrefix(),
+    },
+  };
+}
+
+function emptyInternalState() {
+  return {
+    template: null,
+    contentBlocks: [],
+    pricing: { packageId: 'custom', scopeItems: [], lineItems: [], total: 0, currency: 'PHP', currencySymbol: moneyPrefix() },
+    approval: { status: 'draft', note: '', updatedAt: new Date().toISOString(), updatedBy: '' },
+    versions: [],
+  };
+}
+
+function ensureInternal(content) {
+  if (!content) return emptyInternalState();
+  const base = emptyInternalState();
+  content.internal = {
+    ...base,
+    ...(content.internal || {}),
+    pricing: { ...base.pricing, ...((content.internal && content.internal.pricing) || {}) },
+    approval: { ...base.approval, ...((content.internal && content.internal.approval) || {}) },
+    versions: Array.isArray(content.internal && content.internal.versions) ? content.internal.versions : [],
+  };
+  if (!Array.isArray(content.internal.contentBlocks)) content.internal.contentBlocks = [];
+  return content.internal;
+}
+
+function activeProposalContent() {
+  return collab.content && collab.content.docType !== 'invoice' ? collab.content : null;
+}
+
+function captureCurrentDocHtml() {
+  const content = activeProposalContent();
+  const art = $('proposal');
+  if (!content || !art || $('emptyState')) return;
+  content.collabHtml = art.innerHTML;
+}
+
+function markWorkflowDirty() {
+  if (!activeProposalContent()) return;
+  workflowDirty = true;
+  updateSaveButton();
+}
+
+function updateSaveButton() {
+  const btn = $('saveDocBtn');
+  if (!btn) return;
+  const canSave = !!activeProposalContent() && !collab.isGuest;
+  btn.hidden = !canSave;
+  btn.textContent = workflowDirty ? 'Save*' : 'Save';
+}
+
+function renderTemplateOptions() {
+  const select = $('templateSelect');
+  if (!select) return;
+  const selected = select.value;
+  select.innerHTML = '<option value="">No template</option>' + allTemplates().map((template) =>
+    `<option value="${esc(template.id)}">${esc(template.name)}</option>`
+  ).join('');
+  if (selected && allTemplates().some((t) => t.id === selected)) select.value = selected;
+  renderTemplatePreview();
+}
+
+function renderTemplatePreview() {
+  const preview = $('templatePreview');
+  if (!preview) return;
+  const template = templateById($('templateSelect')?.value);
+  preview.innerHTML = template ? `
+    <div class="internal-preview__title">${esc(template.name)}</div>
+    <div class="internal-preview__text">${esc(template.summary || '')}</div>
+  ` : `
+    <div class="internal-preview__title">No template selected</div>
+    <div class="internal-preview__text">The proposal will use only the source document, details, blocks, and pricing context you provide.</div>
+  `;
+}
+
+function appendInstruction(text) {
+  const notes = $('f_notes');
+  if (!notes || !text) return;
+  notes.value = notes.value.trim() ? `${notes.value.trim()}\n\n${text}` : text;
+}
+
+function applyTemplate() {
+  const template = templateById($('templateSelect')?.value);
+  if (!template) { showToast('Choose a template first.', 'error'); return; }
+  $('f_proposalName').value = template.proposalName || template.name || $('f_proposalName').value;
+  appendInstruction(template.notes || '');
+  renderScopeItems(template.scopeItems || []);
+  renderProposalPriceRows(template.priceItems || []);
+  $('pricingPackageSelect').value = 'custom';
+  const content = activeProposalContent();
+  if (content) {
+    const internal = ensureInternal(content);
+    internal.template = { id: template.id, name: template.name, summary: template.summary, notes: template.notes };
+    internal.pricing = collectInternalControls().pricing;
+    markWorkflowDirty();
+    hydrateInternalUi();
+  }
+  showToast(`Template applied: ${template.name}`);
+}
+
+function saveCustomTemplate() {
+  const name = $('customTemplateName').value.trim();
+  if (!name) { showToast('Name the template first.', 'error'); return; }
+  const templates = readJsonList(LS_INTERNAL_TEMPLATES);
+  const custom = {
+    id: uid('template'),
+    name,
+    summary: $('f_title').value.trim() || $('f_proposalName').value.trim() || 'Custom proposal template',
+    proposalName: $('f_proposalName').value.trim() || name,
+    notes: $('f_notes').value.trim(),
+    scopeItems: scopeItemsFromDom(),
+    priceItems: pricingRowsFromDom(),
+  };
+  templates.unshift(custom);
+  writeJsonList(LS_INTERNAL_TEMPLATES, templates.slice(0, 20));
+  $('customTemplateName').value = '';
+  renderTemplateOptions();
+  $('templateSelect').value = custom.id;
+  renderTemplatePreview();
+  showToast('Template saved.');
+}
+
+function renderBlockCategoryOptions() {
+  const select = $('blockCategorySelect');
+  if (!select) return;
+  const current = select.value;
+  const categories = Array.from(new Set(allContentBlocks().map((b) => b.category || 'General'))).sort();
+  select.innerHTML = categories.map((cat) => `<option value="${esc(cat)}">${esc(cat)}</option>`).join('');
+  if (current && categories.includes(current)) select.value = current;
+}
+
+function renderPricingPackageOptions() {
+  const select = $('pricingPackageSelect');
+  if (!select) return;
+  const current = select.value;
+  select.innerHTML = PRICING_PACKAGES.map((pkg) => `<option value="${esc(pkg.id)}">${esc(pkg.name)}</option>`).join('');
+  if (current && PRICING_PACKAGES.some((pkg) => pkg.id === current)) select.value = current;
+}
+
+function renderContentBlockList() {
+  const listEl = $('contentBlockList');
+  if (!listEl) return;
+  const category = $('blockCategorySelect')?.value;
+  const blocks = allContentBlocks().filter((block) => !category || block.category === category);
+  if (!blocks.length) {
+    listEl.innerHTML = '<p class="card__hint">No blocks in this category.</p>';
+    return;
+  }
+  listEl.innerHTML = blocks.map((block) => {
+    const selected = selectedBlockIds.has(block.id);
+    return `
+      <div class="content-block ${selected ? 'content-block--selected' : ''}" data-block-id="${esc(block.id)}">
+        <div class="content-block__body">
+          <div class="content-block__title">${esc(block.title)}</div>
+          <div class="content-block__text">${esc(block.body)}</div>
+        </div>
+        <div class="content-block__actions">
+          <button type="button" class="btn btn--ghost btn--sm" data-block-use="${esc(block.id)}">${selected ? 'Added' : 'Use'}</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-block-insert="${esc(block.id)}">Insert</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function setBlockUsed(blockId, used = true) {
+  if (used) selectedBlockIds.add(blockId);
+  else selectedBlockIds.delete(blockId);
+  const content = activeProposalContent();
+  if (content) {
+    ensureInternal(content).contentBlocks = collectInternalControls().contentBlocks;
+    markWorkflowDirty();
+  }
+  renderContentBlockList();
+}
+
+function htmlForBlock(block) {
+  return `<p><strong>${esc(block.title)}:</strong> ${esc(block.body)}</p>`;
+}
+
+function insertContentBlock(blockId) {
+  const block = blockById(blockId);
+  if (!block) return;
+  setBlockUsed(blockId, true);
+  const content = activeProposalContent();
+  if (!content || !$('proposal') || !$('proposal').isContentEditable) {
+    appendInstruction(`${block.title}: ${block.body}`);
+    showToast('Block added to instructions.');
+    return;
+  }
+  const editor = $('proposal');
+  editor.focus();
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount && editor.contains(sel.anchorNode)) {
+    document.execCommand('insertHTML', false, htmlForBlock(block));
+  } else {
+    editor.insertAdjacentHTML('beforeend', htmlForBlock(block));
+  }
+  captureCurrentDocHtml();
+  markWorkflowDirty();
+  showToast('Block inserted.');
+}
+
+function saveCustomBlock() {
+  const title = $('customBlockTitle').value.trim();
+  const body = $('customBlockBody').value.trim();
+  if (!title || !body) { showToast('Add a title and wording first.', 'error'); return; }
+  const category = $('blockCategorySelect').value || 'General';
+  const blocks = readJsonList(LS_INTERNAL_BLOCKS);
+  const block = { id: uid('block'), category, title, body };
+  blocks.unshift(block);
+  writeJsonList(LS_INTERNAL_BLOCKS, blocks.slice(0, 40));
+  $('customBlockTitle').value = '';
+  $('customBlockBody').value = '';
+  renderBlockCategoryOptions();
+  $('blockCategorySelect').value = category;
+  renderContentBlockList();
+  showToast('Block saved.');
+}
+
+function renderScopeItems(items) {
+  const root = $('scopeItems');
+  if (!root) return;
+  root.innerHTML = (items || []).map((item) => `
+    <span class="scope-item" data-value="${esc(item)}">
+      ${esc(item)}
+      <button type="button" aria-label="Remove scope item">&times;</button>
+    </span>
+  `).join('');
+}
+
+function addScopeItem() {
+  const input = $('scopeItemInput');
+  const value = input.value.trim();
+  if (!value) return;
+  renderScopeItems([...scopeItemsFromDom(), value]);
+  input.value = '';
+  const content = activeProposalContent();
+  if (content) {
+    ensureInternal(content).pricing = collectInternalControls().pricing;
+    markWorkflowDirty();
+  }
+}
+
+function addProposalPriceRow(values = {}) {
+  const root = $('proposalPriceItems');
+  if (!root) return;
+  const row = document.createElement('div');
+  row.className = 'proposal-price-item';
+  row.innerHTML = `
+    <input class="input proposal-price-item__name" placeholder="Line item" />
+    <input class="input proposal-price-item__basis" placeholder="Basis" />
+    <div class="proposal-price-item__money">
+      <span>${esc(moneyPrefix())}</span>
+      <input class="input proposal-price-item__amount" type="number" min="0" step="1000" placeholder="0" />
+    </div>
+    <button type="button" class="line-item__remove" aria-label="Remove pricing item">&times;</button>
+  `;
+  row.querySelector('.proposal-price-item__name').value = values.item || '';
+  row.querySelector('.proposal-price-item__basis').value = values.basis || '';
+  row.querySelector('.proposal-price-item__amount').value = values.amount || '';
+  row.querySelectorAll('input').forEach((input) => input.addEventListener('input', () => {
+    updateProposalPriceTotal();
+    const content = activeProposalContent();
+    if (content) {
+      ensureInternal(content).pricing = collectInternalControls().pricing;
+      markWorkflowDirty();
+    }
+  }));
+  row.querySelector('.line-item__remove').addEventListener('click', () => {
+    row.remove();
+    updateProposalPriceTotal();
+    const content = activeProposalContent();
+    if (content) {
+      ensureInternal(content).pricing = collectInternalControls().pricing;
+      markWorkflowDirty();
+    }
+  });
+  root.appendChild(row);
+  updateProposalPriceTotal();
+}
+
+function renderProposalPriceRows(items = []) {
+  const root = $('proposalPriceItems');
+  if (!root) return;
+  root.innerHTML = '';
+  (items.length ? items : [{ item: '', basis: '', amount: '' }]).forEach(addProposalPriceRow);
+  updateProposalPriceTotal();
+}
+
+function updateProposalPriceTotal() {
+  const total = pricingTotal();
+  const el = $('proposalPriceTotal');
+  if (el) el.textContent = formatMoney(total);
+  document.querySelectorAll('.proposal-price-item__money span').forEach((span) => { span.textContent = moneyPrefix(); });
+  return total;
+}
+
+function applyPricingPackage() {
+  const pkg = PRICING_PACKAGES.find((p) => p.id === $('pricingPackageSelect').value) || PRICING_PACKAGES[0];
+  if (pkg.id === 'custom') return;
+  renderScopeItems(pkg.scopeItems);
+  renderProposalPriceRows(pkg.priceItems);
+  const content = activeProposalContent();
+  if (content) {
+    ensureInternal(content).pricing = collectInternalControls().pricing;
+    markWorkflowDirty();
+  }
+}
+
+function applyPricingToDetails() {
+  const internal = collectInternalControls();
+  const total = internal.pricing.total;
+  const breakdown = internal.pricing.lineItems
+    .map((item) => `${item.item || 'Line item'} - ${formatMoney(item.amount)}${item.basis ? ` (${item.basis})` : ''}`)
+    .join('; ');
+  if (total > 0) {
+    $('f_cost').value = formatMoney(total);
+    $('f_budget').value = `${formatMoney(total)} fixed project fee, exclusive of VAT and reimbursables unless stated otherwise.`;
+  }
+  const scope = internal.pricing.scopeItems.length ? `Scope guardrails: ${internal.pricing.scopeItems.join('; ')}.` : '';
+  appendInstruction([breakdown ? `Pricing breakdown: ${breakdown}.` : '', scope].filter(Boolean).join('\n'));
+  const content = activeProposalContent();
+  if (content) {
+    ensureInternal(content).pricing = internal.pricing;
+    markWorkflowDirty();
+    hydrateInternalUi();
+  }
+  showToast('Pricing applied.');
+}
+
+function approvalStatus(content = activeProposalContent()) {
+  return ensureInternal(content).approval.status || 'draft';
+}
+
+function renderWorkflowBanner() {
+  const banner = $('workflowBanner');
+  const content = activeProposalContent();
+  if (!banner || !content) { if (banner) banner.hidden = true; return; }
+  const internal = ensureInternal(content);
+  const status = internal.approval.status || 'draft';
+  const note = internal.approval.note ? `<span>${esc(internal.approval.note)}</span>` : '';
+  banner.hidden = false;
+  banner.className = `workflow-banner workflow-banner--${esc(status)} no-print`;
+  banner.innerHTML = `
+    <span class="workflow-banner__pill">${esc(APPROVAL_LABELS[status] || status)}</span>
+    <strong>${esc(content.meta?.title || 'Current proposal')}</strong>
+    ${note}
+  `;
+}
+
+function renderApprovalPanel() {
+  const summary = $('approvalSummary');
+  const content = activeProposalContent();
+  if (!summary) return;
+  if (!content) {
+    summary.innerHTML = '<p class="card__hint">Open or generate a proposal to use review status.</p>';
+    document.querySelectorAll('[data-approval-status]').forEach((btn) => btn.disabled = true);
+    $('approvalNote').value = '';
+    return;
+  }
+  const internal = ensureInternal(content);
+  const status = internal.approval.status || 'draft';
+  summary.innerHTML = `
+    <div class="approval-summary__status approval-summary__status--${esc(status)}">${esc(APPROVAL_LABELS[status] || status)}</div>
+    <div class="approval-summary__meta">${internal.approval.updatedAt ? esc(new Date(internal.approval.updatedAt).toLocaleString(getLocale())) : 'Not updated yet'}</div>
+  `;
+  $('approvalNote').value = internal.approval.note || '';
+  document.querySelectorAll('[data-approval-status]').forEach((btn) => {
+    btn.disabled = false;
+    btn.classList.toggle('btn--primary', btn.dataset.approvalStatus === status);
+    btn.classList.toggle('btn--ghost', btn.dataset.approvalStatus !== status);
+  });
+}
+
+async function setApprovalStatus(status) {
+  const content = activeProposalContent();
+  if (!content) { showToast('Open a proposal first.', 'error'); return; }
+  const internal = ensureInternal(content);
+  const session = await getSession();
+  internal.approval = {
+    status,
+    note: $('approvalNote').value.trim(),
+    updatedAt: new Date().toISOString(),
+    updatedBy: (session && (session.user.user_metadata?.full_name || session.user.email)) || 'PocketDevs',
+  };
+  captureCurrentDocHtml();
+  markWorkflowDirty();
+  renderApprovalPanel();
+  renderWorkflowBanner();
+  addVersionSnapshot(APPROVAL_LABELS[status] || status, `Status changed to ${APPROVAL_LABELS[status] || status}.`, { toast: false });
+  await saveCurrentDocument({ toast: false });
+  showToast(`Marked ${APPROVAL_LABELS[status] || status}.`);
+}
+
+function applyWorkflowControlsToContent() {
+  const content = activeProposalContent();
+  if (!content) return null;
+  const internal = ensureInternal(content);
+  const controls = collectInternalControls();
+  internal.template = controls.template;
+  internal.contentBlocks = controls.contentBlocks;
+  internal.pricing = controls.pricing;
+  internal.approval.note = $('approvalNote').value.trim();
+  internal.approval.updatedAt = internal.approval.updatedAt || new Date().toISOString();
+  captureCurrentDocHtml();
+  return content;
+}
+
+async function saveCurrentDocument({ toast = true } = {}) {
+  const content = activeProposalContent();
+  if (!content) { if (toast) showToast('Open a proposal first.', 'error'); return false; }
+  if (collab.isGuest) {
+    await persistDoc();
+    workflowDirty = false;
+    updateSaveButton();
+    if (toast) showToast('Shared document saved.');
+    return true;
+  }
+  applyWorkflowControlsToContent();
+  const { data, error } = await saveProposal(content);
+  if (error) {
+    if (error === 'not-authenticated') showAuthModal();
+    if (toast) showToast(error.message || String(error), 'error');
+    return false;
+  }
+  const id = data && data[0] && data[0].id;
+  if (id && !collab.id) collab.id = id;
+  workflowDirty = false;
+  updateSaveButton();
+  updateShareButton();
+  refreshHistory();
+  if ($('dashboardModal')?.classList.contains('modal--visible')) refreshDashboard();
+  if (toast) showToast('Proposal saved.');
+  return true;
+}
+
+function addVersionSnapshot(label, summary = '', options = {}) {
+  const content = activeProposalContent();
+  if (!content) return;
+  const internal = ensureInternal(content);
+  captureCurrentDocHtml();
+  const version = {
+    id: uid('version'),
+    label: label || `Snapshot ${internal.versions.length + 1}`,
+    summary,
+    status: internal.approval.status || 'draft',
+    createdAt: new Date().toISOString(),
+    html: content.collabHtml || getDocHtml(),
+  };
+  internal.versions = [version, ...internal.versions].slice(0, MAX_VERSIONS);
+  workflowDirty = true;
+  renderVersionList();
+  updateSaveButton();
+  if (options.toast !== false) showToast('Snapshot saved.');
+  if (options.persist) saveCurrentDocument({ toast: false });
+}
+
+async function restoreVersion(versionId) {
+  const content = activeProposalContent();
+  if (!content) return;
+  const internal = ensureInternal(content);
+  const version = internal.versions.find((item) => item.id === versionId);
+  if (!version || !version.html) return;
+  if (!confirm(`Restore "${version.label}"? Your current editor content will be replaced.`)) return;
+  $('proposal').innerHTML = version.html;
+  content.collabHtml = version.html;
+  markWorkflowDirty();
+  addVersionSnapshot(`Restored ${version.label}`, 'Snapshot created before saving the restored document.', { toast: false });
+  await saveCurrentDocument({ toast: false });
+  showToast('Version restored.');
+}
+
+function renderVersionList() {
+  const listEl = $('versionList');
+  if (!listEl) return;
+  const content = activeProposalContent();
+  const versions = content ? ensureInternal(content).versions : [];
+  if (!versions.length) {
+    listEl.innerHTML = '<p class="card__hint">No snapshots yet.</p>';
+    return;
+  }
+  listEl.innerHTML = versions.map((version) => `
+    <div class="version-item" data-version-id="${esc(version.id)}">
+      <div class="version-item__body">
+        <div class="version-item__title">${esc(version.label)}</div>
+        <div class="version-item__meta">${esc(new Date(version.createdAt).toLocaleString(getLocale()))} · ${esc(APPROVAL_LABELS[version.status] || version.status)}</div>
+      </div>
+      <button type="button" class="btn btn--ghost btn--sm" data-version-restore="${esc(version.id)}">Restore</button>
+    </div>
+  `).join('');
+}
+
+function hydrateInternalUi() {
+  renderTemplateOptions();
+  renderBlockCategoryOptions();
+  renderPricingPackageOptions();
+  const content = activeProposalContent();
+  if (content) {
+    const internal = ensureInternal(content);
+    $('templateSelect').value = internal.template && allTemplates().some((t) => t.id === internal.template.id) ? internal.template.id : '';
+    renderTemplatePreview();
+    selectedBlockIds = new Set((internal.contentBlocks || []).map((block) => block.id).filter(Boolean));
+    renderScopeItems(internal.pricing.scopeItems || []);
+    renderProposalPriceRows(internal.pricing.lineItems || []);
+    if ($('pricingPackageSelect')) $('pricingPackageSelect').value = internal.pricing.packageId || 'custom';
+  } else {
+    if (!$('proposalPriceItems')?.children.length) renderProposalPriceRows();
+  }
+  renderContentBlockList();
+  renderApprovalPanel();
+  renderWorkflowBanner();
+  renderVersionList();
+  updateSaveButton();
 }
 
 /* ---------- Generate ---------- */
@@ -278,6 +1003,12 @@ async function generate() {
   btn.disabled = true;
   setStatus('working', '<span class="spinner"></span> Reading the document and drafting all 10 sections… this can take 30–60s.');
 
+  const internalContext = {
+    template: intake.internal.template,
+    reusableContentBlocks: intake.internal.contentBlocks,
+    pricingAndScopeBuilder: intake.internal.pricing,
+  };
+
   const userText =
     'Draft a PocketDevs proposal' + (pdfFile ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
     '\\nUse ONLY these confirmed values for hard facts; output "[TBD]" for anything missing, EXCEPT totalCost/budget — ' +
@@ -300,6 +1031,8 @@ async function generate() {
       budget: intake.budget || null,
       paymentDetails: intake.paymentDetails || null,
     }, null, 2) +
+    '\\n\\nINTERNAL TEMPLATE / REUSABLE BLOCKS / PRICING CONTEXT (JSON):\\n' + JSON.stringify(internalContext, null, 2) +
+    '\\nUse this internal context to shape scope, wording, risk controls, and pricing tables when it is relevant. Do not expose the phrase "internal context" in the proposal.' +
     (intake.notes ? '\\n\\nEXTRA INSTRUCTIONS:\\n' + intake.notes : '') +
     `\\n\\nFORMATTING: Write every monetary amount with the "${intake.currencySymbol || intake.currency}" symbol (currency ${intake.currency}), e.g. "${intake.currencySymbol || ''}120,000". Use ${intake.locale} conventions for dates and number grouping.` +
     '\\n\\nReturn the full structured proposal.';
@@ -384,9 +1117,17 @@ async function generate() {
       proposal.meta.paymentDetails = intake.paymentDetails || '';
       if (intake.proposalName) proposal.meta.title = intake.proposalName;
     }
+    const internal = ensureInternal(proposal);
+    internal.template = intake.internal.template;
+    internal.contentBlocks = intake.internal.contentBlocks;
+    internal.pricing = intake.internal.pricing;
+    internal.approval = { status: 'draft', note: '', updatedAt: new Date().toISOString(), updatedBy: '' };
 
     render(proposal);
     setActiveDoc({ id: null, content: proposal, token: null });
+    captureCurrentDocHtml();
+    addVersionSnapshot('AI draft', 'Initial generated proposal.', { toast: false });
+    hydrateInternalUi();
     // Best-effort save to history (we're signed in; never blocks the result).
     try {
       const { data, error: saveErr } = await saveProposal(proposal);
@@ -1252,7 +1993,9 @@ function setActiveDoc({ id, content, token }) {
   collab.content = content || null;
   collab.token = token || null;
   collab.isShared = !!token;
+  workflowDirty = false;
   updateShareButton();
+  hydrateInternalUi();
 }
 
 function updateShareButton() {
@@ -1273,6 +2016,7 @@ function onLocalEdit() {
   if (collab.applyingRemote) return;
   collab.lastEditAt = Date.now();
   if (collab.content) collab.content.collabHtml = getDocHtml();
+  markWorkflowDirty();
   if (collab.channel) {
     clearTimeout(_bcTimer);
     _bcTimer = setTimeout(() => collab.channel && collab.channel.broadcast(getDocHtml()), COLLAB_BROADCAST_MS);
@@ -1642,6 +2386,7 @@ async function enterGuestMode(token) {
   collab.token = token;
   collab.content = doc.content || {};
   openDocument(collab.content);
+  hydrateInternalUi();
   setStatus('', '');
   attachEditListener();
   await joinCollab();
@@ -1784,11 +2529,17 @@ async function loadOwnedDoc(row) {
 }
 
 /* ---------- History ---------- */
+function approvalBadgeHtml(content) {
+  if (!content || content.docType === 'invoice') return '';
+  const status = ensureInternal(content).approval.status || 'draft';
+  return `<span class="doc-status doc-status--${esc(status)}">${esc(APPROVAL_LABELS[status] || status)}</span>`;
+}
+
 function historyItemHtml(p) {
   return `
     <div class="history-item" data-id="${p.id}">
       <div class="history-item__body">
-        <div class="history-item__title">${esc(p.project_title || 'Untitled')}</div>
+        <div class="history-item__title">${esc(p.project_title || 'Untitled')} ${approvalBadgeHtml(p.content)}</div>
         <div class="history-item__meta">${esc(p.client_name || '')} · ${esc(p.doc_number || '')}</div>
       </div>
       <button type="button" class="history-item__delete" title="Delete proposal" aria-label="Delete proposal">&times;</button>
@@ -1907,6 +2658,7 @@ function renderDashboardGrid(items) {
         </div>
         <div class="doc-card__body">
           <div class="doc-card__title" title="${title}">${title}</div>
+          ${approvalBadgeHtml(item.content)}
           ${meta ? `<div class="doc-card__meta">${meta}</div>` : ''}
           <div class="doc-card__meta">${updated}</div>
         </div>
@@ -1979,6 +2731,11 @@ function pdfScale(element) {
 }
 function downloadPDF() {
   const element = $('proposal');
+  const content = activeProposalContent();
+  if (content && approvalStatus(content) !== 'approved') {
+    const ok = confirm('This proposal is not approved yet. Download anyway?');
+    if (!ok) return;
+  }
   const docNo = document.querySelector('.js-doc-no')?.innerText?.trim() || 'PD-PROPOSAL';
   const opt = {
     margin: [15, 15],
@@ -2121,6 +2878,82 @@ function setMode(mode) {
   });
 }
 
+function openInternalTab(tab) {
+  document.querySelectorAll('.internal-tab').forEach((btn) => {
+    const active = btn.dataset.internalTab === tab;
+    btn.classList.toggle('internal-tab--active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('[data-internal-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.internalPanel !== tab;
+  });
+}
+
+function initInternalToolkit() {
+  hydrateInternalUi();
+  document.querySelectorAll('.internal-tab').forEach((btn) => {
+    btn.addEventListener('click', () => openInternalTab(btn.dataset.internalTab));
+  });
+  $('templateSelect').addEventListener('change', renderTemplatePreview);
+  $('applyTemplateBtn').addEventListener('click', applyTemplate);
+  $('saveTemplateBtn').addEventListener('click', saveCustomTemplate);
+
+  $('blockCategorySelect').addEventListener('change', renderContentBlockList);
+  $('contentBlockList').addEventListener('click', (e) => {
+    const use = e.target.closest('[data-block-use]');
+    const insert = e.target.closest('[data-block-insert]');
+    if (use) {
+      const id = use.dataset.blockUse;
+      setBlockUsed(id, !selectedBlockIds.has(id));
+    }
+    if (insert) insertContentBlock(insert.dataset.blockInsert);
+  });
+  $('saveBlockBtn').addEventListener('click', saveCustomBlock);
+
+  $('pricingPackageSelect').addEventListener('change', applyPricingPackage);
+  $('scopeItems').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    const item = e.target.closest('.scope-item');
+    if (!btn || !item) return;
+    item.remove();
+    const content = activeProposalContent();
+    if (content) {
+      ensureInternal(content).pricing = collectInternalControls().pricing;
+      markWorkflowDirty();
+    }
+  });
+  $('addScopeItemBtn').addEventListener('click', addScopeItem);
+  $('scopeItemInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addScopeItem(); }
+  });
+  $('addProposalPriceItemBtn').addEventListener('click', () => addProposalPriceRow());
+  $('applyPricingBtn').addEventListener('click', applyPricingToDetails);
+  $('f_currency').addEventListener('change', updateProposalPriceTotal);
+
+  document.querySelectorAll('[data-approval-status]').forEach((btn) => {
+    btn.addEventListener('click', () => setApprovalStatus(btn.dataset.approvalStatus));
+  });
+  $('approvalNote').addEventListener('input', () => {
+    const content = activeProposalContent();
+    if (!content) return;
+    ensureInternal(content).approval.note = $('approvalNote').value.trim();
+    markWorkflowDirty();
+    renderWorkflowBanner();
+  });
+  $('saveWorkflowBtn').addEventListener('click', () => saveCurrentDocument());
+  $('saveDocBtn').addEventListener('click', () => saveCurrentDocument());
+  $('saveVersionBtn').addEventListener('click', async () => {
+    const label = $('versionLabelInput').value.trim() || 'Manual snapshot';
+    $('versionLabelInput').value = '';
+    addVersionSnapshot(label, 'Manual snapshot.', { toast: true });
+    await saveCurrentDocument({ toast: false });
+  });
+  $('versionList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-version-restore]');
+    if (btn) restoreVersion(btn.dataset.versionRestore);
+  });
+}
+
 /* ---------- Wiring ---------- */
 function initDropzone() {
   const dz = $('dropzone');
@@ -2180,6 +3013,7 @@ function init() {
     autofillMeta();
     autofillInvoiceMeta();
     addLineItemRow();
+    initInternalToolkit();
     updateAuthState();
 
     // Handle ?mode=invoice URL param (from sidebar Invoice link)

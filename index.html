@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=31" />
+  <link rel="stylesheet" href="styles.css?v=32" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -34,6 +34,7 @@
       </button>
       <div id="collabAvatars" class="collab-avatars" hidden aria-label="People editing"></div>
       <button id="authNavBtn" class="btn btn--ghost nav-link">Login</button>
+      <button id="saveDocBtn" class="btn btn--ghost" type="button" hidden>Save</button>
       <button id="shareBtn" class="btn btn--ghost" type="button" hidden>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         <span id="shareBtnLabel">Share</span>
@@ -213,6 +214,87 @@
         </div>
       </section>
 
+      <!-- Internal proposal toolkit -->
+      <section class="card internal-card" data-mode="proposal">
+        <div class="step"><span class="step__n">I</span><h2 class="card__title">Internal toolkit</h2></div>
+        <div class="internal-tabs" role="tablist" aria-label="Internal proposal tools">
+          <button type="button" class="internal-tab internal-tab--active" data-internal-tab="templates" role="tab" aria-selected="true">Templates</button>
+          <button type="button" class="internal-tab" data-internal-tab="blocks" role="tab" aria-selected="false">Blocks</button>
+          <button type="button" class="internal-tab" data-internal-tab="pricing" role="tab" aria-selected="false">Pricing</button>
+          <button type="button" class="internal-tab" data-internal-tab="review" role="tab" aria-selected="false">Review</button>
+          <button type="button" class="internal-tab" data-internal-tab="versions" role="tab" aria-selected="false">Versions</button>
+        </div>
+
+        <div id="internalPanelTemplates" class="internal-panel" data-internal-panel="templates">
+          <div class="field">
+            <label class="label">Template</label>
+            <select id="templateSelect" class="input"></select>
+          </div>
+          <div id="templatePreview" class="internal-preview"></div>
+          <button id="applyTemplateBtn" type="button" class="btn btn--primary btn--block">Apply template</button>
+          <div class="internal-mini-form">
+            <input id="customTemplateName" class="input" placeholder="Custom template name" />
+            <button id="saveTemplateBtn" type="button" class="btn btn--ghost btn--sm">Save current</button>
+          </div>
+        </div>
+
+        <div id="internalPanelBlocks" class="internal-panel" data-internal-panel="blocks" hidden>
+          <div class="field">
+            <label class="label">Block type</label>
+            <select id="blockCategorySelect" class="input"></select>
+          </div>
+          <div id="contentBlockList" class="content-block-list"></div>
+          <div class="internal-mini-form internal-mini-form--stack">
+            <input id="customBlockTitle" class="input" placeholder="Custom block title" />
+            <textarea id="customBlockBody" class="input textarea" rows="3" placeholder="Reusable wording"></textarea>
+            <button id="saveBlockBtn" type="button" class="btn btn--ghost btn--sm">Save block</button>
+          </div>
+        </div>
+
+        <div id="internalPanelPricing" class="internal-panel" data-internal-panel="pricing" hidden>
+          <div class="field">
+            <label class="label">Package</label>
+            <select id="pricingPackageSelect" class="input"></select>
+          </div>
+          <h3 class="card__subtitle">Scope guardrails</h3>
+          <div id="scopeItems" class="scope-items"></div>
+          <div class="internal-mini-form">
+            <input id="scopeItemInput" class="input" placeholder="Add scope item or exclusion" />
+            <button id="addScopeItemBtn" type="button" class="btn btn--ghost btn--sm">Add</button>
+          </div>
+          <h3 class="card__subtitle">Pricing</h3>
+          <div id="proposalPriceItems" class="proposal-price-items"></div>
+          <button id="addProposalPriceItemBtn" type="button" class="btn btn--ghost btn--sm">+ Add item</button>
+          <div class="line-items__total">
+            <span>Total</span>
+            <span id="proposalPriceTotal">0.00</span>
+          </div>
+          <button id="applyPricingBtn" type="button" class="btn btn--primary btn--block">Apply pricing</button>
+        </div>
+
+        <div id="internalPanelReview" class="internal-panel" data-internal-panel="review" hidden>
+          <div id="approvalSummary" class="approval-summary"></div>
+          <div class="approval-actions">
+            <button type="button" class="btn btn--ghost btn--sm" data-approval-status="draft">Draft</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-approval-status="review">Review</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-approval-status="approved">Approve</button>
+          </div>
+          <div class="field">
+            <label class="label">Review note</label>
+            <textarea id="approvalNote" class="input textarea" rows="3" placeholder="Internal note"></textarea>
+          </div>
+          <button id="saveWorkflowBtn" type="button" class="btn btn--primary btn--block">Save workflow</button>
+        </div>
+
+        <div id="internalPanelVersions" class="internal-panel" data-internal-panel="versions" hidden>
+          <div class="internal-mini-form">
+            <input id="versionLabelInput" class="input" placeholder="Snapshot label" />
+            <button id="saveVersionBtn" type="button" class="btn btn--primary btn--sm">Save snapshot</button>
+          </div>
+          <div id="versionList" class="version-list"></div>
+        </div>
+      </section>
+
       <!-- Step 3 — Generate -->
       <section class="card">
         <div class="step"><span class="step__n">3</span><h2 class="card__title">Generate</h2></div>
@@ -223,6 +305,7 @@
     </aside>
 
     <div class="stage">
+      <div id="workflowBanner" class="workflow-banner no-print" hidden></div>
       <div id="collabBanner" class="collab-banner no-print" hidden>
         <span class="collab-banner__dot"></span>
         <span class="collab-banner__text">Live shared document — your edits sync automatically.</span>
@@ -457,6 +540,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=31"></script>
+  <script type="module" src="app.js?v=32"></script>
 </body>
 </html>

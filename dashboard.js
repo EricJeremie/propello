@@ -23,6 +23,13 @@ function getDocType(item) {
 }
 
 const TYPE_LABELS = { proposal: 'Proposal', invoice: 'Invoice', questionnaire: 'Questionnaire' };
+const APPROVAL_LABELS = { draft: 'Draft', review: 'In review', approved: 'Approved' };
+
+function approvalBadgeHtml(content) {
+  if (!content || content.docType === 'invoice') return '';
+  const status = (content.internal && content.internal.approval && content.internal.approval.status) || 'draft';
+  return `<span class="doc-status doc-status--${esc(status)}">${esc(APPROVAL_LABELS[status] || status)}</span>`;
+}
 
 function mergeItems() {
   const proposals = allProposals.map(p => ({ ...p, _type: p.content?.docType === 'invoice' ? 'invoice' : 'proposal' }));
@@ -75,6 +82,7 @@ function renderGrid(items) {
         </div>
         <div class="doc-card__body">
           <div class="doc-card__title" title="${title}">${title}</div>
+          ${approvalBadgeHtml(item.content)}
           ${meta ? `<div class="doc-card__meta">${meta}</div>` : ''}
           <div class="doc-card__meta">${updated}</div>
         </div>
