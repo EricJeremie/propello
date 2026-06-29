@@ -1,5 +1,12 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js?v=19';
-import { initLayout } from './nav.js?v=19';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js?v=28';
+import { initLayout } from './nav.js?v=28';
+import {
+  buildIndustryMetadata,
+  collectIndustryAnswers,
+  industryOptionsHtml,
+  industryQuestionsHtml,
+  isIndustryMetadataComplete,
+} from './industry-profiles.js?v=1';
 
 const PRODUCTION_ORIGIN = 'https://pocketdevs-proposal-generator.vercel.app';
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -14,6 +21,49 @@ function normalizeBearerToken(raw) {
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function setIndustryQuestionControlsEnabled(root, enabled) {
+  if (!root) return;
+  root.querySelectorAll('input, select, textarea').forEach((control) => {
+    control.disabled = !enabled;
+  });
+}
+
+function renderAuthIndustryQuestions() {
+  const select = $('authIndustry');
+  const container = $('authIndustryQuestions');
+  if (!select || !container) return;
+  container.innerHTML = industryQuestionsHtml(select.value || '', {}, 'reqIndustryQuestion');
+  setIndustryQuestionControlsEnabled($('authIndustryField'), authMode === 'signup');
+}
+
+function setupAuthIndustryOnboarding() {
+  const select = $('authIndustry');
+  if (!select) return;
+  select.innerHTML = industryOptionsHtml('', { includePlaceholder: true });
+  select.value = '';
+  select.addEventListener('change', renderAuthIndustryQuestions);
+  renderAuthIndustryQuestions();
+}
+
+function setAuthIndustryOnboardingVisible(visible) {
+  const field = $('authIndustryField');
+  if (!field) return;
+  field.hidden = !visible;
+  setIndustryQuestionControlsEnabled(field, visible);
+  const select = $('authIndustry');
+  if (select) {
+    select.disabled = !visible;
+    select.required = visible;
+  }
+}
+
+function collectAuthIndustryMetadata() {
+  const industryId = $('authIndustry')?.value || '';
+  if (!industryId) return null;
+  return buildIndustryMetadata(industryId, collectIndustryAnswers($('authForm')));
+}
+
 const list = (items) => items && items.length
   ? `<ul class="p-list">${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '';
 const sectionHead = (n, title) =>
@@ -1044,6 +1094,8 @@ function setAuthMode(mode) {
   $('authTitle').textContent = isLogin ? 'Sign in to PocketDevs' : 'Create an account';
   $('authSubmit').textContent = isLogin ? 'Sign in' : 'Create account';
   $('authNameRow').hidden = isLogin;
+  $('authName').required = !isLogin;
+  setAuthIndustryOnboardingVisible(!isLogin);
   $('authTabLogin').classList.toggle('btn--primary', isLogin);
   $('authTabLogin').classList.toggle('btn--ghost', !isLogin);
   $('authTabLogin').setAttribute('aria-pressed', String(isLogin));
@@ -1058,12 +1110,19 @@ async function handleAuth(e) {
   const password = $('authPassword').value;
   const name = $('authName').value.trim();
   const errEl = $('authError');
+  const industryProfile = authMode === 'signup' ? collectAuthIndustryMetadata() : null;
   errEl.hidden = true;
+  if (authMode === 'signup' && !isIndustryMetadataComplete(industryProfile)) {
+    errEl.textContent = 'Please choose an industry and answer the setup questions.';
+    errEl.className = 'status status--error';
+    errEl.hidden = false;
+    return;
+  }
   $('authSubmit').disabled = true;
   try {
     const { data, error } = authMode === 'login'
       ? await signIn(email, password)
-      : await signUp(email, password, name);
+      : await signUp(email, password, name, industryProfile);
     if (error) {
       errEl.textContent = error.message || String(error);
       errEl.className = 'status status--error';
@@ -1592,6 +1651,7 @@ function setupWiring() {
   $('rqAuthBtn').addEventListener('click', showAuthModal);
   $('closeAuth').addEventListener('click', hideAuthModal);
   $('authModal').addEventListener('click', (e) => { if (e.target === $('authModal')) hideAuthModal(); });
+  setupAuthIndustryOnboarding();
   $('authTabLogin').addEventListener('click', () => setAuthMode('login'));
   $('authTabSignup').addEventListener('click', () => setAuthMode('signup'));
   $('authForm').addEventListener('submit', handleAuth);

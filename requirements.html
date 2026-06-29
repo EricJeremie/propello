@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=35" />
   <link rel="stylesheet" href="requirements.css?v=14" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
@@ -260,6 +260,12 @@
         <div class="field"><label class="label">Email</label><input id="authEmail" class="input" type="email" autocomplete="email" required /></div>
         <div class="field"><label class="label">Password</label><input id="authPassword" class="input" type="password" autocomplete="current-password" required /></div>
         <div id="authNameRow" class="field" hidden><label class="label">Full name</label><input id="authName" class="input" type="text" /></div>
+        <div id="authIndustryField" class="field industry-onboarding" hidden>
+          <label class="label" for="authIndustry">Industry</label>
+          <select id="authIndustry" class="input"></select>
+          <p class="card__hint">We will tailor the proposal generator to this industry after signup.</p>
+          <div id="authIndustryQuestions" class="industry-question-list"></div>
+        </div>
         <button class="btn btn--primary btn--block" type="submit" id="authSubmit">Sign in</button>
         <div id="authError" class="status" hidden></div>
       </form>
@@ -279,6 +285,6 @@
     </div>
   </div>
 
-  <script type="module" src="requirements.js?v=23"></script>
+  <script type="module" src="requirements.js?v=24"></script>
 </body>
 </html>

@@ -58,10 +58,12 @@ export async function signIn(email, password) {
   catch (err) { return { error: { message: err.message || 'Sign-in failed.' } }; }
 }
 
-export async function signUp(email, password, fullName) {
+export async function signUp(email, password, fullName, industryProfile = null) {
   const sb = await getClient();
   if (!sb) return { error: { message: 'Accounts are offline right now — you can still generate proposals.' } };
-  try { return await sb.auth.signUp({ email, password, options: { data: { full_name: fullName || '' } } }); }
+  const metadata = { full_name: fullName || '' };
+  if (industryProfile) metadata.industry_profile = industryProfile;
+  try { return await sb.auth.signUp({ email, password, options: { data: metadata } }); }
   catch (err) { return { error: { message: err.message || 'Sign-up failed.' } }; }
 }
 
@@ -260,13 +262,18 @@ export async function fetchSubmissionById(id) {
    so no client account is needed. Returns { ok } or { error }. */
 /* ---------- User Account Updates ---------- */
 
-export async function updateUserProfile({ fullName, avatarDataUrl } = {}) {
+export async function updateUserProfile({ fullName, avatarDataUrl, industryProfile } = {}) {
   const sb = await getClient();
   if (!sb) return { error: { message: 'Offline — cannot update profile.' } };
   const data = {};
   if (fullName !== undefined) data.full_name = fullName;
   if (avatarDataUrl !== undefined) data.avatar_url = avatarDataUrl;
-  try { return await sb.auth.updateUser({ data }); }
+  if (industryProfile !== undefined) data.industry_profile = industryProfile;
+  try {
+    const { data: userData } = await sb.auth.getUser();
+    const current = (userData && userData.user && userData.user.user_metadata) || {};
+    return await sb.auth.updateUser({ data: { ...current, ...data } });
+  }
   catch (err) { return { error: { message: err.message || 'Profile update failed.' } }; }
 }
 

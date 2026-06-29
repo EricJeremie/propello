@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=34" />
+  <link rel="stylesheet" href="styles.css?v=35" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -217,6 +217,7 @@
       <!-- Internal proposal toolkit -->
       <section class="card internal-card" data-mode="proposal">
         <div class="step"><span class="step__n">I</span><h2 class="card__title">Internal toolkit</h2></div>
+        <div id="industrySetupNotice" class="industry-setup no-print" hidden></div>
         <div class="internal-tabs" role="tablist" aria-label="Internal proposal tools">
           <button type="button" class="internal-tab internal-tab--active" data-internal-tab="templates" role="tab" aria-selected="true">Templates</button>
           <button type="button" class="internal-tab" data-internal-tab="blocks" role="tab" aria-selected="false">Blocks</button>
@@ -531,6 +532,12 @@
           <label class="label">Name</label>
           <input id="authName" type="text" class="input" autocomplete="name" />
         </div>
+        <div class="field industry-onboarding" id="authIndustryField" hidden>
+          <label class="label" for="authIndustry">Industry</label>
+          <select id="authIndustry" class="input"></select>
+          <p class="card__hint">We will tailor proposal templates, reusable blocks, pricing guidance, and AI wording to this industry.</p>
+          <div id="authIndustryQuestions" class="industry-question-list"></div>
+        </div>
         <div class="field">
           <label class="label">Email</label>
           <input id="authEmail" type="email" class="input" required />
@@ -545,6 +552,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=34"></script>
+  <script type="module" src="app.js?v=35"></script>
 </body>
 </html>

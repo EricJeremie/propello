@@ -5,9 +5,22 @@
    ============================================================ */
 'use strict';
 
-import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=27';
-import { initLayout } from './nav.js?v=27';
+import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=28';
+import { initLayout } from './nav.js?v=28';
 import { createQuickSearch } from './quick-search.js';
+import {
+  buildIndustryMetadata,
+  collectIndustryAnswers,
+  getIndustryContentBlocks,
+  getIndustryPricingPackages,
+  getIndustryProfile,
+  getIndustryPromptContext,
+  getIndustryTemplates,
+  industryOptionsHtml,
+  industryQuestionsHtml,
+  isIndustryMetadataComplete,
+  normalizeIndustryMetadata,
+} from './industry-profiles.js?v=1';
 
 /* ---------- Constants ---------- */
 const MODEL = 'gemini-2.5-flash';
@@ -31,7 +44,7 @@ PocketDevs proposals read like this reference (AI-Assisted Development Training 
 - Footer is always: PocketDevs | Confidential | www.pocketdevs.ph. Signatory defaults to the CEO.
 `;
 
-const SYSTEM_PROMPT = `You are the proposal writer for PocketDevs (a Philippine software development studio).
+const SYSTEM_PROMPT = `You are the proposal writer for PocketDevs (a Philippine professional services team).
 Given a client's source document (brief, notes, RFP, or scope) plus confirmed deal details, produce a
 complete, client-ready proposal as STRUCTURED JSON matching the provided schema. Cover all ten sections:
 Executive Summary, Solutions Outline, Objectives, Full Scope of Work, Project Timeline, Project Cost,
@@ -59,6 +72,8 @@ Rules:
   the client should never have to calculate it themselves. The three amounts must sum to the total.
 - Terms and Services must include, at minimum: confirmation & payment, taxes & expenses, scope control /
   change requests, IP & internal-use license, warranty/support boundary, and validity of the quotation.
+- Use the selected industry context to choose terminology, deliverables, support language, exclusions, and
+  pricing assumptions. If the industry is not technology/software, do not force software-development wording.
 - Write in PocketDevs' house voice.
 
 ${STYLE_EXEMPLAR}
@@ -144,6 +159,7 @@ let pdfFile = null;
 let pdfName = null;
 const LS_INTERNAL_TEMPLATES = 'pdv_internal_templates';
 const LS_INTERNAL_BLOCKS = 'pdv_internal_blocks';
+const LS_INDUSTRY_DEFAULTS = 'pdv_industry_defaults_applied';
 const MAX_VERSIONS = 15;
 
 const TEMPLATE_LIBRARY = [
@@ -263,6 +279,7 @@ const APPROVAL_LABELS = {
 
 let selectedBlockIds = new Set();
 let workflowDirty = false;
+let currentSession = null;
 
 /* ---------- Status ---------- */
 function setStatus(kind, html) {
@@ -397,11 +414,15 @@ function uid(prefix) {
 }
 
 function allTemplates() {
-  return [...TEMPLATE_LIBRARY, ...readJsonList(LS_INTERNAL_TEMPLATES)];
+  return [...TEMPLATE_LIBRARY, ...getIndustryTemplates(), ...readJsonList(LS_INTERNAL_TEMPLATES)];
 }
 
 function allContentBlocks() {
-  return [...CONTENT_BLOCK_LIBRARY, ...readJsonList(LS_INTERNAL_BLOCKS)];
+  return [...CONTENT_BLOCK_LIBRARY, ...getIndustryContentBlocks(), ...readJsonList(LS_INTERNAL_BLOCKS)];
+}
+
+function allPricingPackages() {
+  return [...PRICING_PACKAGES, ...getIndustryPricingPackages()];
 }
 
 function templateById(id) {
@@ -464,6 +485,174 @@ function collectInternalControls() {
       currencySymbol: moneyPrefix(),
     },
   };
+}
+
+function sessionIndustryMetadata(session = currentSession) {
+  return normalizeIndustryMetadata(session?.user?.user_metadata?.industry_profile);
+}
+
+function industryDefaultsKey(session, industryId) {
+  if (!session?.user?.id || !industryId) return '';
+  return `${LS_INDUSTRY_DEFAULTS}:${session.user.id}:${industryId}`;
+}
+
+function alreadyAppliedIndustryDefaults(session, industryId) {
+  const key = industryDefaultsKey(session, industryId);
+  return key ? localStorage.getItem(key) === '1' : false;
+}
+
+function rememberAppliedIndustryDefaults(session, industryId) {
+  const key = industryDefaultsKey(session, industryId);
+  if (!key) return;
+  try { localStorage.setItem(key, '1'); } catch { /* optional storage */ }
+}
+
+function applyIndustryToolkitDefaults(metadata, { remember = false } = {}) {
+  const normalized = normalizeIndustryMetadata(metadata);
+  if (!normalized || !isIndustryMetadataComplete(normalized)) return false;
+  const profile = getIndustryProfile(normalized.industryId);
+  if (!profile || !profile.toolkit) return false;
+
+  const { template, pricingPackage, defaultBlockIds = [] } = profile.toolkit;
+  if (template && $('templateSelect')) {
+    renderTemplateOptions();
+    $('templateSelect').value = template.id;
+    renderTemplatePreview();
+    if (!$('f_proposalName').value.trim()) $('f_proposalName').value = template.proposalName || template.name || '';
+  }
+  if (pricingPackage) {
+    renderPricingPackageOptions();
+    if ($('pricingPackageSelect')) $('pricingPackageSelect').value = pricingPackage.id;
+    renderScopeItems(pricingPackage.scopeItems || []);
+    renderProposalPriceRows(pricingPackage.priceItems || []);
+  }
+  selectedBlockIds = new Set(defaultBlockIds);
+  renderBlockCategoryOptions();
+  renderContentBlockList();
+  updateProposalPriceTotal();
+  if (remember) rememberAppliedIndustryDefaults(currentSession, normalized.industryId);
+  return true;
+}
+
+function applyIndustryDefaultsForSession(session = currentSession) {
+  const metadata = sessionIndustryMetadata(session);
+  if (!metadata || !isIndustryMetadataComplete(metadata)) return;
+  if (activeProposalContent()) return;
+  if (alreadyAppliedIndustryDefaults(session, metadata.industryId)) return;
+  applyIndustryToolkitDefaults(metadata, { remember: true });
+}
+
+function setIndustryQuestionControlsEnabled(root, enabled) {
+  if (!root) return;
+  root.querySelectorAll('input, select, textarea').forEach((control) => {
+    control.disabled = !enabled;
+  });
+}
+
+function renderAuthIndustryQuestions() {
+  const select = $('authIndustry');
+  const container = $('authIndustryQuestions');
+  if (!select || !container) return;
+  container.innerHTML = industryQuestionsHtml(select.value || '', {}, 'authIndustryQuestion');
+  setIndustryQuestionControlsEnabled($('authIndustryField'), authMode === 'signup');
+}
+
+function setupAuthIndustryOnboarding() {
+  const select = $('authIndustry');
+  if (!select) return;
+  select.innerHTML = industryOptionsHtml('', { includePlaceholder: true });
+  select.value = '';
+  select.addEventListener('change', renderAuthIndustryQuestions);
+  renderAuthIndustryQuestions();
+}
+
+function setAuthIndustryOnboardingVisible(visible) {
+  const field = $('authIndustryField');
+  if (!field) return;
+  field.hidden = !visible;
+  setIndustryQuestionControlsEnabled(field, visible);
+  const select = $('authIndustry');
+  if (select) {
+    select.disabled = !visible;
+    select.required = visible;
+  }
+}
+
+function collectAuthIndustryMetadata() {
+  const form = $('authForm');
+  const industryId = $('authIndustry')?.value || '';
+  if (!industryId) return null;
+  return buildIndustryMetadata(industryId, collectIndustryAnswers(form));
+}
+
+function renderIndustrySetupNotice(session = currentSession) {
+  const notice = $('industrySetupNotice');
+  if (!notice) return;
+  const metadata = sessionIndustryMetadata(session);
+  if (!session || (metadata && isIndustryMetadataComplete(metadata))) {
+    notice.hidden = true;
+    notice.innerHTML = '';
+    return;
+  }
+
+  const industryId = metadata?.industryId || '';
+  const answers = metadata?.answers || {};
+  notice.hidden = false;
+  notice.innerHTML = `
+    <div class="industry-setup__copy">
+      <span class="industry-setup__eyebrow">Complete setup</span>
+      <strong>Tailor the toolkit to your industry.</strong>
+      <p>Answer these once and we will prefill templates, reusable blocks, pricing guidance, and proposal wording for future drafts.</p>
+    </div>
+    <div class="industry-setup__form">
+      <label class="label" for="toolkitIndustrySelect">Industry</label>
+      <select id="toolkitIndustrySelect" class="input">${industryOptionsHtml(industryId, { includePlaceholder: true })}</select>
+      <div id="toolkitIndustryQuestions" class="industry-question-list">${industryQuestionsHtml(industryId, answers, 'toolkitIndustryQuestion')}</div>
+      <button type="button" id="saveIndustrySetupBtn" class="btn btn--primary btn--block">Save industry setup</button>
+      <div id="industrySetupStatus" class="status" hidden></div>
+    </div>
+  `;
+
+  const select = $('toolkitIndustrySelect');
+  const questions = $('toolkitIndustryQuestions');
+  select.addEventListener('change', () => {
+    questions.innerHTML = industryQuestionsHtml(select.value || '', {}, 'toolkitIndustryQuestion');
+  });
+  $('saveIndustrySetupBtn').addEventListener('click', handleSaveIndustrySetup);
+}
+
+async function handleSaveIndustrySetup() {
+  const status = $('industrySetupStatus');
+  const industryId = $('toolkitIndustrySelect')?.value || '';
+  if (!industryId) {
+    status.className = 'status status--error';
+    status.textContent = 'Please choose an industry first.';
+    status.hidden = false;
+    return;
+  }
+  const metadata = buildIndustryMetadata(industryId, collectIndustryAnswers($('industrySetupNotice')));
+  if (!isIndustryMetadataComplete(metadata)) {
+    status.className = 'status status--error';
+    status.textContent = 'Please answer the setup questions so the profile can be tailored.';
+    status.hidden = false;
+    return;
+  }
+
+  $('saveIndustrySetupBtn').disabled = true;
+  status.className = 'status status--working';
+  status.textContent = 'Saving your industry setup...';
+  status.hidden = false;
+  const { data, error } = await updateUserProfile({ industryProfile: metadata });
+  $('saveIndustrySetupBtn').disabled = false;
+  if (error) {
+    status.className = 'status status--error';
+    status.textContent = error.message || String(error);
+    return;
+  }
+  if (data?.user && currentSession) currentSession = { ...currentSession, user: data.user };
+  applyIndustryToolkitDefaults(metadata, { remember: true });
+  renderIndustrySetupNotice(currentSession);
+  showToast('Industry setup saved.');
 }
 
 function emptyInternalState() {
@@ -599,8 +788,9 @@ function renderPricingPackageOptions() {
   const select = $('pricingPackageSelect');
   if (!select) return;
   const current = select.value;
-  select.innerHTML = PRICING_PACKAGES.map((pkg) => `<option value="${esc(pkg.id)}">${esc(pkg.name)}</option>`).join('');
-  if (current && PRICING_PACKAGES.some((pkg) => pkg.id === current)) select.value = current;
+  const packages = allPricingPackages();
+  select.innerHTML = packages.map((pkg) => `<option value="${esc(pkg.id)}">${esc(pkg.name)}</option>`).join('');
+  if (current && packages.some((pkg) => pkg.id === current)) select.value = current;
 }
 
 function renderContentBlockList() {
@@ -765,7 +955,8 @@ function updateProposalPriceTotal() {
 }
 
 function applyPricingPackage() {
-  const pkg = PRICING_PACKAGES.find((p) => p.id === $('pricingPackageSelect').value) || PRICING_PACKAGES[0];
+  const packages = allPricingPackages();
+  const pkg = packages.find((p) => p.id === $('pricingPackageSelect').value) || packages[0];
   if (pkg.id === 'custom') return;
   renderScopeItems(pkg.scopeItems);
   renderProposalPriceRows(pkg.priceItems);
@@ -979,6 +1170,7 @@ function hydrateInternalUi() {
   renderApprovalPanel();
   renderWorkflowBanner();
   renderVersionList();
+  renderIndustrySetupNotice();
   updateSaveButton();
 }
 
@@ -1006,6 +1198,7 @@ async function generate() {
   setStatus('working', '<span class="spinner"></span> Reading the document and drafting all 10 sections… this can take 30–60s.');
 
   const internalContext = {
+    industryProfile: getIndustryPromptContext(sessionIndustryMetadata(session)),
     template: intake.internal.template,
     reusableContentBlocks: intake.internal.contentBlocks,
     pricingAndScopeBuilder: intake.internal.pricing,
@@ -1120,6 +1313,7 @@ async function generate() {
       if (intake.proposalName) proposal.meta.title = intake.proposalName;
     }
     const internal = ensureInternal(proposal);
+    internal.industryProfile = internalContext.industryProfile;
     internal.template = intake.internal.template;
     internal.contentBlocks = intake.internal.contentBlocks;
     internal.pricing = intake.internal.pricing;
@@ -2417,6 +2611,7 @@ function setAuthMode(mode) {
   $('authTabSignup').setAttribute('aria-pressed', String(isSignUp));
   $('authNameField').hidden = !isSignUp;
   $('authName').required = isSignUp;
+  setAuthIndustryOnboardingVisible(isSignUp);
 }
 
 async function handleAuth(e) {
@@ -2426,14 +2621,20 @@ async function handleAuth(e) {
   const password = $('authPassword').value;
   const isSignUp = authMode === 'signup';
   const errEl = $('authError');
+  const industryProfile = isSignUp ? collectAuthIndustryMetadata() : null;
 
   errEl.hidden = true;
   errEl.className = 'status status--error';
+  if (isSignUp && !isIndustryMetadataComplete(industryProfile)) {
+    errEl.textContent = 'Please choose an industry and answer the setup questions.';
+    errEl.hidden = false;
+    return;
+  }
   $('authSubmit').disabled = true;
 
   try {
     const { data, error } = isSignUp
-      ? await signUp(email, password, name)
+      ? await signUp(email, password, name, industryProfile)
       : await signIn(email, password);
 
     if (error) {
@@ -2467,6 +2668,7 @@ function greetingPhrase() {
 async function updateAuthState() {
   try {
     const session = await getSession();
+    currentSession = session;
     const navBtn = $('authNavBtn');
     const greeting = $('authGreeting');
     if (session) {
@@ -2480,6 +2682,8 @@ async function updateAuthState() {
 
       $('openDashboardBtn').hidden = false;
 
+      applyIndustryDefaultsForSession(session);
+      renderIndustrySetupNotice(session);
       refreshHistory();
 
       // Auto-open a document when navigated from dashboard (?open=ID)
@@ -2501,6 +2705,7 @@ async function updateAuthState() {
       $('historyList').innerHTML = '<p class="card__hint">Login to see your history.</p>';
       $('openDashboardBtn').hidden = true;
       hideDashboardModal();
+      renderIndustrySetupNotice(null);
     }
   } catch (err) {
     console.error('Auth state update failed:', err);
@@ -3011,6 +3216,7 @@ function init() {
   try {
     initDropzone();
     initDatePickers();
+    setupAuthIndustryOnboarding();
     applyLogo();
     autofillMeta();
     autofillInvoiceMeta();

@@ -1,16 +1,65 @@
 'use strict';
 
-import { initLayout } from './nav.js?v=8';
+import { initLayout } from './nav.js?v=28';
 import {
   getSession, signIn, signUp, signOut, onAuthChange,
   fetchUserProposals, fetchUserQuestionnaires,
   deleteProposal, deleteQuestionnaire,
-} from './supabase.js?v=8';
+} from './supabase.js?v=28';
 import { createQuickSearch } from './quick-search.js';
+import {
+  buildIndustryMetadata,
+  collectIndustryAnswers,
+  industryOptionsHtml,
+  industryQuestionsHtml,
+  isIndustryMetadataComplete,
+} from './industry-profiles.js?v=1';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function setIndustryQuestionControlsEnabled(root, enabled) {
+  if (!root) return;
+  root.querySelectorAll('input, select, textarea').forEach((control) => {
+    control.disabled = !enabled;
+  });
+}
+
+function renderAuthIndustryQuestions() {
+  const select = $('authIndustry');
+  const container = $('authIndustryQuestions');
+  if (!select || !container) return;
+  container.innerHTML = industryQuestionsHtml(select.value || '', {}, 'dashIndustryQuestion');
+  setIndustryQuestionControlsEnabled($('authIndustryField'), authMode === 'signup');
+}
+
+function setupAuthIndustryOnboarding() {
+  const select = $('authIndustry');
+  if (!select) return;
+  select.innerHTML = industryOptionsHtml('', { includePlaceholder: true });
+  select.value = '';
+  select.addEventListener('change', renderAuthIndustryQuestions);
+  renderAuthIndustryQuestions();
+}
+
+function setAuthIndustryOnboardingVisible(visible) {
+  const field = $('authIndustryField');
+  if (!field) return;
+  field.hidden = !visible;
+  setIndustryQuestionControlsEnabled(field, visible);
+  const select = $('authIndustry');
+  if (select) {
+    select.disabled = !visible;
+    select.required = visible;
+  }
+}
+
+function collectAuthIndustryMetadata() {
+  const industryId = $('authIndustry')?.value || '';
+  if (!industryId) return null;
+  return buildIndustryMetadata(industryId, collectIndustryAnswers($('authForm')));
+}
 
 let allProposals = [];
 let allQuestionnaires = [];
@@ -195,6 +244,8 @@ function setAuthMode(mode) {
   const isLogin = mode === 'login';
   $('authSubmit').textContent = isLogin ? 'Log in' : 'Create account';
   $('authNameField').hidden = isLogin;
+  $('authName').required = !isLogin;
+  setAuthIndustryOnboardingVisible(!isLogin);
   $('authTabLogin').classList.toggle('btn--primary', isLogin);
   $('authTabLogin').classList.toggle('btn--ghost', !isLogin);
   $('authTabSignup').classList.toggle('btn--primary', !isLogin);
@@ -209,12 +260,18 @@ async function handleAuth(e) {
   const password = $('authPassword').value;
   const name = $('authName').value.trim();
   const errEl = $('authError');
+  const industryProfile = authMode === 'signup' ? collectAuthIndustryMetadata() : null;
   errEl.hidden = true;
+  if (authMode === 'signup' && !isIndustryMetadataComplete(industryProfile)) {
+    errEl.textContent = 'Please choose an industry and answer the setup questions.';
+    errEl.hidden = false;
+    return;
+  }
   $('authSubmit').disabled = true;
   try {
     const { data, error } = authMode === 'login'
       ? await signIn(email, password)
-      : await signUp(email, password, name);
+      : await signUp(email, password, name, industryProfile);
     if (error) {
       errEl.textContent = error.message || String(error);
       errEl.hidden = false;
@@ -246,6 +303,7 @@ function init() {
   onAuthChange(session => updateAuthState(session));
 
   // Auth gate form wiring
+  setupAuthIndustryOnboarding();
   $('authTabLogin').addEventListener('click', () => setAuthMode('login'));
   $('authTabSignup').addEventListener('click', () => setAuthMode('signup'));
   $('authForm').addEventListener('submit', handleAuth);
