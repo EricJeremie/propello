@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Propello - Sign in or create your account</title>
+  <meta name="description" content="Sign in to Propello or create an account to draft winning proposals in under a minute." />
+  <link rel="icon" href="assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="marketing.css?v=2" />
+  <link rel="stylesheet" href="auth.css?v=1" />
+</head>
+<body class="marketing-page page-auth">
+  <main class="auth-shell">
+    <!-- Left: brand panel, same gradient + visual language as the landing hero -->
+    <aside class="auth-aside" data-nav>
+      <a class="auth-aside__brand" href="home.html" aria-label="Propello home">
+        <img src="assets/logo-light.svg" alt="Propello" />
+      </a>
+
+      <div class="auth-aside__copy">
+        <span class="eyebrow" data-reveal>Welcome back</span>
+        <h1 data-reveal data-reveal-delay="80">Draft winning proposals in under a minute.</h1>
+        <p data-reveal data-reveal-delay="160">Sign in to pick up where you left off, or create an account to start shaping client-ready proposals with Propello.</p>
+        <ul class="auth-points" data-reveal data-reveal-delay="220">
+          <li>AI drafting from a brief, RFP, or notes</li>
+          <li>Reusable scope blocks and PHP pricing</li>
+          <li>Brand controls and clean PDF export</li>
+        </ul>
+      </div>
+
+      <div class="auth-aside__trust" data-reveal data-reveal-delay="280">
+        <span>Trusted by service teams</span>
+        <span class="avatar-row" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      </div>
+
+      <div class="auth-visual" aria-hidden="true">
+        <div class="proposal-stack proposal-stack--small">
+          <span class="proposal-page proposal-page--back"></span>
+          <span class="proposal-page proposal-page--front"><i></i><i></i><i></i><i></i></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right: the auth card -->
+    <section class="auth-main">
+      <p class="auth-topbar"><a href="home.html">&larr; Back to site</a></p>
+
+      <div class="auth-card" data-reveal>
+        <div class="auth-card__head">
+          <h2 id="authHeading">Sign in to Propello</h2>
+          <p id="authSubhead">Use your email and password to access the app.</p>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Login or sign up">
+          <button type="button" class="auth-tab" id="tabLogin" role="tab" aria-selected="true" data-mode="login">Login</button>
+          <button type="button" class="auth-tab" id="tabSignup" role="tab" aria-selected="false" data-mode="signup">Sign up</button>
+        </div>
+
+        <form class="auth-form" id="authForm" novalidate>
+          <div class="auth-field" id="nameField" hidden>
+            <label for="authName">Full name</label>
+            <input type="text" id="authName" name="name" autocomplete="name" placeholder="Jane Santos" />
+          </div>
+
+          <div class="auth-field">
+            <label for="authEmail">Email</label>
+            <input type="email" id="authEmail" name="email" autocomplete="email" placeholder="you@company.com" required />
+          </div>
+
+          <div class="auth-field">
+            <label for="authPassword">Password</label>
+            <div class="auth-input-wrap">
+              <input type="password" id="authPassword" name="password" autocomplete="current-password" class="has-toggle" placeholder="••••••••" required minlength="6" />
+              <button type="button" class="auth-eye" id="togglePassword" aria-label="Show password" aria-pressed="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn--primary auth-submit" id="authSubmit">Login</button>
+
+          <p class="auth-status" id="authStatus" role="alert" hidden></p>
+        </form>
+
+        <p class="auth-foot" id="authFoot">
+          New to Propello?
+          <button type="button" id="switchMode" data-target="signup">Create an account</button>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="marketing.js?v=2"></script>
+  <script type="module" src="auth.js?v=1"></script>
+</body>
+</html>
