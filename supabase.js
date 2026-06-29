@@ -1,5 +1,5 @@
 /* ============================================================
-   PocketDevs Proposal Generator - Supabase Integration
+   Propello Proposal Generator - Supabase Integration
    Resilient by design: the SDK is loaded lazily and every
    export degrades gracefully. A Supabase/CDN failure must NEVER
    break the app — auth + history are optional features.

@@ -1,5 +1,5 @@
 /* ============================================================
-   PocketDevs Proposal Generator
+   Propello Proposal Generator
    Build-free static app. Calls a Vercel API route that holds the
    Gemini key server-side; renders structured JSON into a branded proposal.
    ============================================================ */
@@ -30,10 +30,12 @@ const PRODUCTION_ORIGIN = 'https://pocketdevs-proposal-generator.vercel.app';
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const API_URL = `${IS_LOCAL_PREVIEW ? PRODUCTION_ORIGIN : window.location.origin}/api/generate-proposal`;
 const LS_LOGO = 'pdv_logo';
+const LS_PROPOSAL_COLOR = 'pdv_proposal_color';
 const DEFAULT_LOGO = 'assets/logo.svg';
+const DEFAULT_PROPOSAL_COLOR = '#f2384a';
 
 const STYLE_EXEMPLAR = `
-PocketDevs proposals read like this reference (AI-Assisted Development Training & Consultation for Elgada BPO):
+Propello proposals read like this reference (AI-Assisted Development Training & Consultation for Elgada BPO):
 - Tone: confident, precise, commercially clear; no fluff, no hype. Short declarative sentences.
 - Structure: a doc number + prepared date in the header, a clear "Prepared for" party, an objective-led
   opening, concrete scope steps with outcomes, a transparent cost basis, explicit commercial terms, then
@@ -41,10 +43,10 @@ PocketDevs proposals read like this reference (AI-Assisted Development Training 
 - Money is stated plainly (e.g. "Php 20,000 per facilitated hour"; totals exclusive of VAT and reimbursables).
 - Terms cover: confirmation & payment (e.g. 50% reservation), taxes & expenses (exclusive of VAT),
   rescheduling, scope control, IP / internal-use license, and validity.
-- Footer is always: PocketDevs | Confidential | www.pocketdevs.ph. Signatory defaults to the CEO.
+- Footer is always: Propello | Confidential | www.propello.app. Signatory defaults to the CEO.
 `;
 
-const SYSTEM_PROMPT = `You are the proposal writer for PocketDevs (a Philippine professional services team).
+const SYSTEM_PROMPT = `You are the proposal writer for Propello (a Philippine professional services team).
 Given a client's source document (brief, notes, RFP, or scope) plus confirmed deal details, produce a
 complete, client-ready proposal as STRUCTURED JSON matching the provided schema. Cover all ten sections:
 Executive Summary, Solutions Outline, Objectives, Full Scope of Work, Project Timeline, Project Cost,
@@ -74,7 +76,7 @@ Rules:
   change requests, IP & internal-use license, warranty/support boundary, and validity of the quotation.
 - Use the selected industry context to choose terminology, deliverables, support language, exclusions, and
   pricing assumptions. If the industry is not technology/software, do not force software-development wording.
-- Write in PocketDevs' house voice.
+- Write in Propello' house voice.
 
 ${STYLE_EXEMPLAR}
 
@@ -103,7 +105,7 @@ const PROPOSAL_SCHEMA = obj({
   preparedBy: obj({
     name: str('Signatory name'),
     title: str('Signatory title'),
-    company: str('Always "PocketDevs"'),
+    company: str('Always "Propello"'),
   }),
   executiveSummary: str('2-4 paragraph executive summary. Use \\n\\n between paragraphs.'),
   solutionsOutline: obj({
@@ -209,7 +211,7 @@ const CONTENT_BLOCK_LIBRARY = [
     id: 'scope-control',
     category: 'Scope',
     title: 'Scope Control',
-    body: 'Any work outside the agreed scope will be assessed as a change request. PocketDevs will provide an impact estimate for cost, timeline, and deliverables before proceeding.',
+    body: 'Any work outside the agreed scope will be assessed as a change request. Propello will provide an impact estimate for cost, timeline, and deliverables before proceeding.',
   },
   {
     id: 'client-responsibilities',
@@ -221,7 +223,7 @@ const CONTENT_BLOCK_LIBRARY = [
     id: 'case-study-internal-tools',
     category: 'Proof',
     title: 'Internal Tools Reference',
-    body: 'PocketDevs has delivered internal tools that reduce manual coordination, consolidate operational records, and give management clearer visibility into work status and handoffs.',
+    body: 'Propello has delivered internal tools that reduce manual coordination, consolidate operational records, and give management clearer visibility into work status and handoffs.',
   },
   {
     id: 'support-boundary',
@@ -302,11 +304,68 @@ function showToast(msg, kind = 'info') {
   }, 4000);
 }
 
-/* ---------- Branding (logo) ---------- */
+/* ---------- Branding (logo + proposal color) ---------- */
 function currentLogo() { return localStorage.getItem(LS_LOGO) || DEFAULT_LOGO; }
 function applyLogo() {
   const src = currentLogo();
   document.querySelectorAll('.js-logo').forEach((img) => { img.src = src; });
+}
+
+function normalizeHexColor(value) {
+  const raw = String(value || '').trim();
+  const expanded = raw.replace(/^#?([0-9a-fA-F]{3})$/, (_, short) =>
+    `#${short.split('').map((ch) => ch + ch).join('')}`);
+  const hex = expanded.startsWith('#') ? expanded : `#${expanded}`;
+  return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toLowerCase() : '';
+}
+
+function colorToRgba(hex, alpha) {
+  const safe = normalizeHexColor(hex) || DEFAULT_PROPOSAL_COLOR;
+  const n = Number.parseInt(safe.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function currentProposalColor() {
+  return normalizeHexColor(localStorage.getItem(LS_PROPOSAL_COLOR)) || DEFAULT_PROPOSAL_COLOR;
+}
+
+function syncProposalColorControls(color = currentProposalColor()) {
+  const safe = normalizeHexColor(color) || DEFAULT_PROPOSAL_COLOR;
+  const colorInput = $('proposalColorInput');
+  const hexInput = $('proposalColorHex');
+  const preview = $('proposalColorPreview');
+  if (colorInput) colorInput.value = safe;
+  if (hexInput) hexInput.value = safe;
+  if (preview) {
+    preview.style.background = safe;
+    preview.style.boxShadow = `0 0 0 6px ${colorToRgba(safe, 0.12)}`;
+  }
+}
+
+function applyProposalColor(color = currentProposalColor()) {
+  const safe = normalizeHexColor(color) || DEFAULT_PROPOSAL_COLOR;
+  const art = $('proposal');
+  if (art) {
+    art.style.setProperty('--proposal-accent', safe);
+    art.style.setProperty('--proposal-accent-soft', colorToRgba(safe, 0.06));
+  }
+  syncProposalColorControls(safe);
+}
+
+function saveProposalColor(value, { toast = false } = {}) {
+  const safe = normalizeHexColor(value);
+  if (!safe) {
+    showToast('Use a valid hex color like #2563eb.', 'error');
+    syncProposalColorControls();
+    return false;
+  }
+  localStorage.setItem(LS_PROPOSAL_COLOR, safe);
+  applyProposalColor(safe);
+  if (toast) showToast('Proposal color updated.');
+  return true;
 }
 
 /* ---------- Locale / currency ---------- */
@@ -367,7 +426,7 @@ function collectIntake() {
     documentNumber: $('f_docno').value.trim(),
     preparedDate: $('f_date').value.trim(),
     signatory: $('f_signatory').value.trim() || 'Eric Jeremie Rotaquio',
-    signatoryTitle: $('f_signatoryTitle').value.trim() || 'Chief Executive Officer, PocketDevs',
+    signatoryTitle: $('f_signatoryTitle').value.trim() || 'Chief Executive Officer, Propello',
     notes: $('f_notes').value.trim(),
     budget: $('f_budget').value.trim(),
     paymentDetails: $('f_paymentDetails').value.trim(),
@@ -381,7 +440,7 @@ function collectInvoiceIntake() {
     client: $('f_inv_client').value.trim(),
     contact: $('f_inv_contact').value.trim(),
     clientTin: $('f_inv_clientTin').value.trim(),
-    company: $('f_inv_company').value.trim() || 'PocketDevs',
+    company: $('f_inv_company').value.trim() || 'Propello',
     tin: $('f_inv_tin').value.trim(),
     invoiceNumber: $('f_inv_no').value.trim(),
     currency: $('f_inv_currency').value.trim() || 'PHP',
@@ -1041,7 +1100,7 @@ async function setApprovalStatus(status) {
     status,
     note: $('approvalNote').value.trim(),
     updatedAt: new Date().toISOString(),
-    updatedBy: (session && (session.user.user_metadata?.full_name || session.user.email)) || 'PocketDevs',
+    updatedBy: (session && (session.user.user_metadata?.full_name || session.user.email)) || 'Propello',
   };
   captureCurrentDocHtml();
   markWorkflowDirty();
@@ -1205,7 +1264,7 @@ async function generate() {
   };
 
   const userText =
-    'Draft a PocketDevs proposal' + (pdfFile ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
+    'Draft a Propello proposal' + (pdfFile ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
     '\\nUse ONLY these confirmed values for hard facts; output "[TBD]" for anything missing, EXCEPT totalCost/budget — ' +
     'if those are not provided, estimate a ballpark budget range based on the scope and complexity instead.\\n\\n' +
     'CONFIRMED DETAILS (JSON):\\n' + JSON.stringify({
@@ -1372,7 +1431,7 @@ function formatAmount(n, prefix) {
   return `${prefix}${Math.round(n).toLocaleString('en-US')}`;
 }
 
-/* PocketDevs' default bank/e-wallet accounts, shown in Payment Options unless
+/* Propello' default bank/e-wallet accounts, shown in Payment Options unless
    the user provides their own payment details. */
 const PAYMENT_ACCOUNTS = [
   { badge: 'BPI', badgeClass: 'p-paymethod__badge--bpi', bank: 'Bank of the Philippine Islands (BPI)', name: 'Bryl Kezter Lim', account: '9939078077' },
@@ -1413,7 +1472,7 @@ function render(d) {
         </div>
         <div class="p-party">
           <div class="p-party__label">Prepared by</div>
-          <div class="p-party__name">${esc(pb.company || 'PocketDevs')}</div>
+          <div class="p-party__name">${esc(pb.company || 'Propello')}</div>
           <div class="p-party__meta">${esc(pb.name || '')}${pb.title ? ' · ' + esc(pb.title) : ''}</div>
         </div>
       </div>
@@ -1473,15 +1532,16 @@ function render(d) {
   sec.push(`<section class="p-section">${sectionHead(10, 'Terms and Services')}<div class="p-terms">${terms}</div></section>`);
   const sign = `
     <section class="p-sign">
-      <p class="p-sign__intro">To proceed, the client may confirm acceptance in writing. PocketDevs will then issue the reservation invoice and schedule a short scoping call to align on timeline, deliverables, and any final details.</p>
+      <p class="p-sign__intro">To proceed, the client may confirm acceptance in writing. Propello will then issue the reservation invoice and schedule a short scoping call to align on timeline, deliverables, and any final details.</p>
       <div class="p-sign__line"></div>
       <div class="p-sign__name">${esc(pb.name || 'Eric Jeremie Rotaquio')}</div>
-      <div class="p-sign__title">${esc(pb.title || 'Chief Executive Officer, PocketDevs')}</div>
+      <div class="p-sign__title">${esc(pb.title || 'Chief Executive Officer, Propello')}</div>
     </section>`;
-  const footer = `<div class="p-docfooter"><span><b>PocketDevs</b></span><span>Confidential</span><span>www.pocketdevs.ph</span></div>`;
+  const footer = `<div class="p-docfooter"><span><b>Propello</b></span><span>Confidential</span><span>www.propello.app</span></div>`;
 
   const art = $('proposal');
   art.innerHTML = cover + sec.join('') + sign + footer;
+  applyProposalColor();
   art.setAttribute('contenteditable', 'true');
   art.setAttribute('spellcheck', 'false');
   $('downloadBtn').disabled = false;
@@ -1575,7 +1635,7 @@ function renderInvoice(d) {
         </div>
         <div class="p-party">
           <div class="p-party__label">From</div>
-          <div class="p-party__name">${esc(pb.company || 'PocketDevs')}</div>
+          <div class="p-party__name">${esc(pb.company || 'Propello')}</div>
           <div class="p-party__meta">TIN: ${esc(pb.tin || '[TBD]')}</div>
         </div>
       </div>
@@ -1600,10 +1660,11 @@ function renderInvoice(d) {
       ${Array.isArray(d.paymentOptions) && d.paymentOptions.length ? list(d.paymentOptions) : ''}
     </section>`;
 
-  const footer = `<div class="p-docfooter"><span><b>PocketDevs</b></span><span>Confidential</span><span>www.pocketdevs.ph</span></div>`;
+  const footer = `<div class="p-docfooter"><span><b>Propello</b></span><span>Confidential</span><span>www.propello.app</span></div>`;
 
   const art = $('proposal');
   art.innerHTML = cover + itemsSection + paymentSection + footer;
+  applyProposalColor();
   art.setAttribute('contenteditable', 'true');
   art.setAttribute('spellcheck', 'false');
   $('downloadBtn').disabled = false;
@@ -2013,6 +2074,7 @@ async function populateSettings() {
   });
   $('settingsNewPassword').value = '';
   $('settingsConfirmPassword').value = '';
+  syncProposalColorControls();
 }
 
 function applySettingsAvatar() {
@@ -2601,7 +2663,7 @@ let authMode = 'login';
 function setAuthMode(mode) {
   authMode = mode;
   const isSignUp = mode === 'signup';
-  $('authTitle').textContent = isSignUp ? 'Create your PocketDevs account' : 'Sign in to PocketDevs';
+  $('authTitle').textContent = isSignUp ? 'Create your Propello account' : 'Sign in to Propello';
   $('authSubmit').textContent = isSignUp ? 'Sign Up' : 'Login';
   $('authTabLogin').classList.toggle('btn--primary', !isSignUp);
   $('authTabLogin').classList.toggle('btn--ghost', isSignUp);
@@ -2724,6 +2786,7 @@ function openDocument(content) {
   }
   // Restore any inline collaborative edits over the freshly rendered structure.
   if (content.collabHtml) $('proposal').innerHTML = content.collabHtml;
+  applyProposalColor();
 }
 
 /* Open a doc the signed-in user owns (from history / dashboard / ?open=),
@@ -3218,6 +3281,7 @@ function init() {
     initDatePickers();
     setupAuthIndustryOnboarding();
     applyLogo();
+    applyProposalColor();
     autofillMeta();
     autofillInvoiceMeta();
     addLineItemRow();
@@ -3266,6 +3330,19 @@ function init() {
     $('logoUploadBtn').addEventListener('click', () => $('logoInput').click());
     $('logoInput').addEventListener('change', (e) => handleLogo(e.target.files[0]));
     $('logoResetBtn').addEventListener('click', () => { localStorage.removeItem(LS_LOGO); applyLogo(); });
+    $('proposalColorInput').addEventListener('input', (e) => saveProposalColor(e.target.value));
+    $('proposalColorHex').addEventListener('change', (e) => saveProposalColor(e.target.value, { toast: true }));
+    $('proposalColorHex').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveProposalColor(e.target.value, { toast: true });
+      }
+    });
+    $('proposalColorResetBtn').addEventListener('click', () => {
+      localStorage.removeItem(LS_PROPOSAL_COLOR);
+      applyProposalColor(DEFAULT_PROPOSAL_COLOR);
+      showToast('Proposal color reset.');
+    });
 
     // Apply stored avatar on load
     applySidebarAvatar();

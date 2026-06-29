@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PocketDevs — Requirements Questionnaire</title>
+  <title>Propello — Requirements Questionnaire</title>
   <link rel="icon" href="assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,14 +17,14 @@
   <!-- Site preloader (fades out on load) -->
   <div id="preloader" class="preloader" role="status" aria-label="Loading">
     <div class="preloader__inner">
-      <img src="assets/logo.svg" alt="PocketDevs" class="preloader__logo" />
+      <img src="assets/logo.svg" alt="Propello" class="preloader__logo" />
       <span class="preloader__spinner" aria-hidden="true"></span>
     </div>
   </div>
 
   <header class="appbar no-print">
     <div class="appbar__brand">
-      <img src="assets/logo.svg" alt="PocketDevs" class="appbar__logo appbar__brand-logo" />
+      <img src="assets/logo.svg" alt="Propello" class="appbar__logo appbar__brand-logo" />
       <span id="rqAuthGreeting" class="appbar__greeting" hidden></span>
       <span class="appbar__divider"></span>
       <span class="appbar__title">Requirements Questionnaire</span>
@@ -41,7 +41,7 @@
 
     <!-- ===== INTAKE MODE CHOOSER ===== -->
     <section id="rqModeChooser" class="rq-mode no-print">
-      <img src="assets/logo.svg" alt="PocketDevs" class="rq-mode__logo" />
+      <img src="assets/logo.svg" alt="Propello" class="rq-mode__logo" />
       <div class="rq-mode__eyebrow">Start a requirements document</div>
       <h1 class="rq-mode__title">How do you want to describe the project?</h1>
       <p class="rq-mode__intro">Choose the AI assistant if you want to explain the project naturally, or choose the normal step-by-step questions if you prefer a guided form.</p>
@@ -143,7 +143,7 @@
     <div id="rqReview" hidden>
       <div class="rq-review-header no-print">
         <h2 class="rq-review-header__title" id="rqReviewTitle">Your answers are ready</h2>
-        <p class="rq-review-header__sub" id="rqReviewSub">Share the link below with PocketDevs so we can generate your System Requirements Document.</p>
+        <p class="rq-review-header__sub" id="rqReviewSub">Share the link below with Propello so we can generate your System Requirements Document.</p>
       </div>
 
       <!-- Client share panel (hidden for staff) -->
@@ -152,21 +152,21 @@
           <input id="rqShareUrl" class="input rq-share-input" readonly placeholder="Your share link will appear here" />
           <button id="rqCopyBtn" class="btn btn--primary" type="button">Copy link</button>
         </div>
-        <div class="rq-share-hint">Send this link to <strong>pocketdevs.ph</strong> — our team will review your answers and generate the SRD.</div>
+        <div class="rq-share-hint">Send this link to <strong>propello.ph</strong> — our team will review your answers and generate the SRD.</div>
       </div>
 
       <!-- Client submit panel (shown only when filling via an invite link) -->
       <div id="rqSubmitPanel" class="card rq-staff-card no-print" hidden>
         <div id="rqSubmitStatus" class="status" hidden></div>
         <button id="rqSubmitBtn" class="btn btn--primary btn--block" type="button">Submit my answers</button>
-        <p class="rq-staff-hint">Your answers go straight to PocketDevs — you don't need to send anything back. Review them below first; you can still edit before submitting.</p>
+        <p class="rq-staff-hint">Your answers go straight to Propello — you don't need to send anything back. Review them below first; you can still edit before submitting.</p>
       </div>
 
       <!-- Staff generate panel -->
       <div id="rqStaffPanel" class="card rq-staff-card no-print" hidden>
         <div id="rqStatus" class="status" hidden></div>
         <button id="rqGenerateBtn" class="btn btn--primary btn--block" type="button">Generate System Requirements Document</button>
-        <p class="rq-staff-hint">Requires a PocketDevs account. You can edit any answers below before generating.</p>
+        <p class="rq-staff-hint">Requires a Propello account. You can edit any answers below before generating.</p>
       </div>
 
       <!-- Answers summary (editable) -->
@@ -179,9 +179,9 @@
 
     <!-- ===== CLIENT THANK-YOU ===== -->
     <div id="rqThankYou" class="rq-thankyou no-print" hidden>
-      <img src="assets/logo.svg" alt="PocketDevs" class="rq-thankyou__logo" />
+      <img src="assets/logo.svg" alt="Propello" class="rq-thankyou__logo" />
       <h2 class="rq-thankyou__title">Thank you! 🎉</h2>
-      <p class="rq-thankyou__sub">Your answers have been sent to PocketDevs. Our team will review them and get back to you shortly. You can close this tab now.</p>
+      <p class="rq-thankyou__sub">Your answers have been sent to Propello. Our team will review them and get back to you shortly. You can close this tab now.</p>
     </div>
 
     <!-- ===== SRD OUTPUT ===== -->
@@ -251,7 +251,7 @@
   <div id="authModal" class="modal no-print">
     <div class="modal__content card">
       <button id="closeAuth" class="modal__close">&times;</button>
-      <h2 class="card__title" id="authTitle">Sign in to PocketDevs</h2>
+      <h2 class="card__title" id="authTitle">Sign in to Propello</h2>
       <div class="grid2" role="tablist">
         <button id="authTabLogin" class="btn btn--primary" type="button" aria-pressed="true">Login</button>
         <button id="authTabSignup" class="btn btn--ghost" type="button" aria-pressed="false">Sign up</button>

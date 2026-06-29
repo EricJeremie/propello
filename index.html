@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PocketDevs — Proposal Generator</title>
+  <title>Propello — Proposal Generator</title>
   <link rel="icon" href="assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=35" />
+  <link rel="stylesheet" href="styles.css?v=36" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script defer src="preloader.js?v=1"></script>
 </head>
@@ -16,7 +16,7 @@
   <!-- Site preloader (fades out on load) -->
   <div id="preloader" class="preloader" role="status" aria-label="Loading">
     <div class="preloader__inner">
-      <img src="assets/logo.svg" alt="PocketDevs" class="preloader__logo" />
+      <img src="assets/logo.svg" alt="Propello" class="preloader__logo" />
       <span class="preloader__spinner" aria-hidden="true"></span>
     </div>
   </div>
@@ -119,7 +119,7 @@
             </div>
           </div>
           <div class="field field--full"><label class="label">Prepared by (signatory)</label><input id="f_signatory" class="input" value="Eric Jeremie Rotaquio" /></div>
-          <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" value="Chief Executive Officer, PocketDevs" /></div>
+          <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" value="Chief Executive Officer, Propello" /></div>
         </div>
 
         <div class="field field--full">
@@ -154,8 +154,8 @@
 
         <h3 class="card__subtitle">From</h3>
         <div class="grid2">
-          <div class="field"><label class="label">Company</label><input id="f_inv_company" class="input" value="PocketDevs" /></div>
-          <div class="field"><label class="label">PocketDevs TIN</label><input id="f_inv_tin" class="input" placeholder="[TBD]" /></div>
+          <div class="field"><label class="label">Company</label><input id="f_inv_company" class="input" value="Propello" /></div>
+          <div class="field"><label class="label">Propello TIN</label><input id="f_inv_tin" class="input" placeholder="[TBD]" /></div>
         </div>
 
         <h3 class="card__subtitle">Invoice info</h3>
@@ -494,6 +494,17 @@
             <button id="logoResetBtn" class="btn btn--ghost btn--sm">Reset</button>
           </div>
         </div>
+        <hr class="rule" />
+        <div class="field">
+          <label class="label">Proposal main color</label>
+          <p class="card__hint">Used for proposal accents like section numbers, bullets, kicker text, and footer brand color. Stored in this browser only.</p>
+          <div class="brand-color-row">
+            <span id="proposalColorPreview" class="brand-color-preview" aria-hidden="true"></span>
+            <input id="proposalColorInput" class="brand-color-input" type="color" value="#f2384a" aria-label="Proposal main color" />
+            <input id="proposalColorHex" class="input brand-color-hex" type="text" value="#f2384a" maxlength="7" inputmode="text" aria-label="Proposal main color hex value" />
+            <button id="proposalColorResetBtn" class="btn btn--ghost btn--sm" type="button">Reset</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -522,7 +533,7 @@
   <div id="authModal" class="modal no-print">
     <div class="modal__content card">
       <button id="closeAuth" class="modal__close">&times;</button>
-      <h2 class="card__title" id="authTitle">Sign in to PocketDevs</h2>
+      <h2 class="card__title" id="authTitle">Sign in to Propello</h2>
       <div class="grid2" role="tablist">
         <button type="button" id="authTabLogin" data-mode="login" class="btn btn--primary" aria-pressed="true">Login</button>
         <button type="button" id="authTabSignup" data-mode="signup" class="btn btn--ghost" aria-pressed="false">Sign Up</button>
@@ -552,6 +563,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=35"></script>
+  <script type="module" src="app.js?v=36"></script>
 </body>
 </html>

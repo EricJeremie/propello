@@ -126,7 +126,7 @@ function renderGrid(items) {
         <div class="doc-card__type doc-card__type--${type}">${TYPE_LABELS[type]}</div>
         ${isNew ? '<div class="doc-card__new">New</div>' : ''}
         <div class="doc-card__thumb">
-          <img src="assets/logo.svg" alt="PocketDevs" />
+          <img src="assets/logo.svg" alt="Propello" />
           <div class="doc-card__thumb-title">${title}</div>
         </div>
         <div class="doc-card__body">

@@ -14,7 +14,7 @@ export function initLayout({ activePage = '', onSettings = null } = {}) {
         <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
-    <img src="assets/logo.svg" alt="PocketDevs" class="app-mobile-bar__logo" />
+    <img src="assets/logo.svg" alt="Propello" class="app-mobile-bar__logo" />
   `;
   document.body.prepend(mobileBar);
 
@@ -32,7 +32,7 @@ export function initLayout({ activePage = '', onSettings = null } = {}) {
   sidebar.innerHTML = `
     <div class="app-sidebar__brand">
       <div class="app-sidebar__logo-wrap">
-        <img src="assets/logo.svg" alt="PocketDevs" class="app-sidebar__logo" />
+        <img src="assets/logo.svg" alt="Propello" class="app-sidebar__logo" />
       </div>
     </div>
     <button id="sidebarCollapseBtn" class="app-sidebar__collapse-btn" type="button" aria-label="Collapse sidebar">

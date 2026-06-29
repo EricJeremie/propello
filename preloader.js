@@ -1,5 +1,5 @@
 /* ============================================================
-   PocketDevs — site-wide preloader
+   Propello — site-wide preloader
    Shows on every page load. Enforces a minimum 2-second display
    so the branded animation always plays, even on fast connections.
    ============================================================ */
