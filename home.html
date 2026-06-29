@@ -3,14 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Propello — Proposal Generator</title>
+  <title>Propello - Proposal Generator</title>
   <link rel="icon" href="assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=39" />
+  <link rel="stylesheet" href="styles.css?v=40" />
 </head>
-<body class="marketing-page">
+<body class="marketing-page marketing-page--home">
+  <div class="landing-canvas" aria-hidden="true">
+    <canvas id="propelloScene"></canvas>
+    <div class="landing-scene-fallback"></div>
+  </div>
 
   <header class="marketing-nav">
     <a class="marketing-nav__brand" href="home.html" aria-label="Propello home">
@@ -24,89 +29,127 @@
     <a class="marketing-nav__cta" href="index.html">Open app</a>
   </header>
 
-  <main>
-    <section class="marketing-hero">
-      <div class="marketing-hero__copy">
+  <main class="landing-main">
+    <section class="marketing-hero landing-panel" data-scene-step="0">
+      <div class="marketing-hero__copy" data-reveal>
         <span class="marketing-eyebrow">Proposal generator for service teams</span>
         <h1>Draft proposals in under a minute.</h1>
         <p>
-          Propello keeps scope, pricing, branding, and industry context in one clean system so
-          internal teams can ship faster without losing judgment.
+          Propello turns briefs, scope, pricing, branding, and industry context into
+          polished proposals your team can review, tailor, and ship faster.
         </p>
-        <div class="marketing-hero__actions">
+        <div class="marketing-hero__actions" data-reveal>
           <a class="marketing-btn marketing-btn--primary" href="index.html">Open app</a>
           <a class="marketing-btn marketing-btn--ghost" href="about.html">About us</a>
         </div>
-        <div class="marketing-proof" aria-label="Propello highlights">
+        <div class="marketing-proof" aria-label="Propello highlights" data-reveal>
           <span><strong>Blue-first</strong> brand system</span>
           <span><strong>Industry-aware</strong> setup</span>
           <span><strong>Export-ready</strong> PDFs</span>
         </div>
       </div>
 
-      <div class="hero-orbit" aria-label="3D proposal preview">
-        <div class="hero-orbit__glow"></div>
-        <div class="hero-card hero-card--back">
-          <span>Scope</span>
-          <strong>4 phases</strong>
-          <em>Clear deliverables</em>
+      <aside class="hero-signal-panel" aria-label="Live proposal system preview" data-reveal>
+        <span class="hero-signal-panel__label">Proposal system</span>
+        <strong>Brief to signed-ready draft</strong>
+        <div class="hero-signal-panel__rows">
+          <span>Scope blocks</span><b>24</b>
+          <span>Review gates</span><b>4</b>
+          <span>Brand controls</span><b>Active</b>
         </div>
-        <div class="hero-card hero-card--front">
-          <div class="hero-card__top">
-            <span>Proposal</span>
-            <strong>Propello</strong>
-          </div>
-          <div class="hero-card__line hero-card__line--wide"></div>
-          <div class="hero-card__line"></div>
-          <div class="hero-card__grid">
-            <span></span><span></span><span></span>
-          </div>
-        </div>
-        <div class="hero-cube">
-          <span></span><span></span><span></span>
-        </div>
-      </div>
+      </aside>
     </section>
 
-    <section class="marketing-section">
-      <div class="section-heading">
-        <span class="marketing-eyebrow">Built for the work before the signature</span>
-        <h2>Clean interface. Serious proposal machinery.</h2>
+    <section class="marketing-section landing-panel landing-panel--split" data-scene-step="1">
+      <div class="section-heading" data-reveal>
+        <span class="marketing-eyebrow">From brief to structure</span>
+        <h2>Every moving part lands in the right place.</h2>
       </div>
-      <div class="feature-grid">
-        <article class="feature-card">
-          <span class="feature-card__num">01</span>
-          <h3>Industry-aware drafts</h3>
-          <p>Choose an industry, answer focused setup questions, and generate proposals with the right terminology and structure.</p>
+      <div class="story-stack" aria-label="Proposal setup flow">
+        <article class="story-card" data-reveal>
+          <span>01</span>
+          <h3>Upload the source</h3>
+          <p>Start with a brief, RFP, requirements document, or messy internal notes.</p>
         </article>
-        <article class="feature-card">
-          <span class="feature-card__num">02</span>
-          <h3>Internal toolkit</h3>
-          <p>Package templates, scope guardrails, reusable blocks, pricing items, review status, and version notes in one place.</p>
+        <article class="story-card" data-reveal>
+          <span>02</span>
+          <h3>Shape the scope</h3>
+          <p>Turn services, exclusions, timelines, and assumptions into reusable blocks.</p>
         </article>
-        <article class="feature-card">
-          <span class="feature-card__num">03</span>
-          <h3>Brand controls</h3>
-          <p>Set your logo and proposal accent color so every PDF feels like it came from your team, not a generic generator.</p>
+        <article class="story-card" data-reveal>
+          <span>03</span>
+          <h3>Review with guardrails</h3>
+          <p>Keep judgment in the loop before a proposal goes to a client.</p>
         </article>
       </div>
     </section>
 
-    <section class="workflow-strip" aria-label="Propello workflow">
-      <div>
-        <span>01</span>
-        <strong>Upload</strong>
-        <p>Bring a brief, notes, RFP, or requirements document.</p>
+    <section class="marketing-section landing-panel landing-panel--metrics" data-scene-step="2">
+      <div class="section-heading section-heading--center" data-reveal>
+        <span class="marketing-eyebrow">Pricing and review stay visible</span>
+        <h2>Not just faster. Easier to trust.</h2>
       </div>
-      <div>
-        <span>02</span>
-        <strong>Tailor</strong>
-        <p>Add client details, industry context, pricing, and scope guardrails.</p>
+      <div class="metric-grid" aria-label="Propello workflow metrics">
+        <article data-reveal>
+          <span>Draft speed</span>
+          <strong>&lt; 1 min</strong>
+          <p>Move from requirements to a usable first draft without starting from a blank page.</p>
+        </article>
+        <article data-reveal>
+          <span>Scope clarity</span>
+          <strong>Built in</strong>
+          <p>Use guardrails, exclusions, and deliverables so proposals stay precise.</p>
+        </article>
+        <article data-reveal>
+          <span>Pricing control</span>
+          <strong>PHP-ready</strong>
+          <p>Keep line items, totals, and package logic visible before export.</p>
+        </article>
       </div>
-      <div>
-        <span>03</span>
-        <strong>Ship</strong>
-        <p>Review, export, share, and keep the proposal moving.</p>
+    </section>
+
+    <section class="marketing-section landing-panel landing-panel--trust" data-scene-step="3">
+      <div class="trust-copy" data-reveal>
+        <span class="marketing-eyebrow">Built for internal teams first</span>
+        <h2>Controls where your team actually needs them.</h2>
+        <p>
+          Propello keeps templates, reusable blocks, tone, proposal color, and review
+          status close to the drafting flow, so teams can move quickly without losing
+          consistency.
+        </p>
+      </div>
+      <div class="trust-grid" aria-label="Propello controls">
+        <article data-reveal>
+          <span>Brand</span>
+          <strong>Logo and main proposal color</strong>
+        </article>
+        <article data-reveal>
+          <span>Industry</span>
+          <strong>Templates and terminology by sector</strong>
+        </article>
+        <article data-reveal>
+          <span>Governance</span>
+          <strong>Review status, versions, and notes</strong>
+        </article>
+        <article data-reveal>
+          <span>Output</span>
+          <strong>Clean PDFs ready for sharing</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="landing-panel landing-final" data-scene-step="4">
+      <div class="launch-card" data-reveal>
+        <span class="marketing-eyebrow">Propel the next proposal</span>
+        <h2>Open Propello and build the next draft.</h2>
+        <p>
+          Use the internal toolkit, tailor the proposal to your industry, and export a
+          branded document when the team is ready.
+        </p>
+        <div class="marketing-hero__actions">
+          <a class="marketing-btn marketing-btn--primary" href="index.html">Open app</a>
+          <a class="marketing-btn marketing-btn--ghost" href="pricing.html">View pricing</a>
+        </div>
       </div>
     </section>
   </main>
@@ -117,5 +160,7 @@
     <a href="pricing.html">Pricing</a>
     <a href="index.html">Open app</a>
   </footer>
+
+  <script type="module" src="landing-scene.js?v=1"></script>
 </body>
 </html>
