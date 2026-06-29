@@ -1,5 +1,5 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY, getSession, signIn, signUp, onAuthChange, saveQuestionnaire, fetchSubmissionById, submitClientQuestionnaire } from './supabase.js?v=28';
-import { initLayout } from './nav.js?v=28';
+import { initLayout } from './nav.js?v=29';
 import {
   buildIndustryMetadata,
   collectIndustryAnswers,
