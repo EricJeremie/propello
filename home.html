@@ -3,164 +3,417 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Propello - Proposal Generator</title>
+  <title>Propello — Draft winning proposals in under a minute</title>
+  <meta name="description" content="Propello turns briefs, scope, pricing, and brand context into polished, client-ready proposals your team can review, tailor, and ship faster." />
   <link rel="icon" href="assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=42" />
+  <link rel="stylesheet" href="marketing.css?v=1" />
 </head>
-<body class="marketing-page marketing-page--home">
-  <div class="landing-canvas" aria-hidden="true">
-    <canvas id="propelloScene"></canvas>
-    <div class="landing-scene-fallback"></div>
+<body class="marketing-page">
+
+  <!-- Ambient background -->
+  <div class="bg-field" aria-hidden="true">
+    <span class="bg-orb bg-orb--1"></span>
+    <span class="bg-orb bg-orb--2"></span>
+    <span class="bg-orb bg-orb--3"></span>
   </div>
 
-  <header class="marketing-nav">
-    <a class="marketing-nav__brand" href="home.html" aria-label="Propello home">
-      <img src="assets/logo.svg" alt="Propello" />
+  <div class="scroll-progress" aria-hidden="true"></div>
+  <div class="scroll-readout" aria-hidden="true"><span>0%</span></div>
+
+  <!-- Nav -->
+  <header class="nav">
+    <a class="nav__brand" href="home.html" aria-label="Propello home">
+      <img src="assets/logo-light.svg" alt="Propello" />
     </a>
-    <nav class="marketing-nav__links" aria-label="Main navigation">
-      <a class="is-active" href="home.html">Home</a>
-      <a href="about.html">About us</a>
-      <a href="pricing.html">Pricing</a>
+    <nav class="nav__links" aria-label="Main navigation">
+      <a href="#solutions">Solutions</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="about.html">About</a>
     </nav>
-    <a class="marketing-nav__cta" href="index.html">Open app</a>
+    <div class="nav__right">
+      <a class="btn btn--primary nav__cta" href="index.html">
+        Open app
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <button class="nav__burger" aria-label="Open menu"><span></span></button>
+    </div>
   </header>
 
-  <main class="landing-main">
-    <section class="marketing-hero landing-panel" data-scene-step="0">
-      <div class="marketing-hero__copy" data-reveal>
-        <span class="marketing-eyebrow">Proposal generator for service teams</span>
-        <h1>Draft proposals in under a minute.</h1>
-        <p>
-          Propello turns briefs, scope, pricing, branding, and industry context into
-          polished proposals your team can review, tailor, and ship faster.
+  <!-- Mobile menu -->
+  <nav class="mobile-menu" aria-label="Mobile navigation">
+    <a href="#solutions">Solutions</a>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="about.html">About</a>
+    <a class="btn btn--primary" href="index.html">Open app</a>
+  </nav>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero shell">
+      <span class="hero__badge" data-reveal>
+        <span class="hero__avatars"><i></i><i></i><i></i></span>
+        Trusted by modern service teams
+      </span>
+      <h1 data-reveal data-reveal-delay="80">Draft winning proposals in <span class="grad">under a minute.</span></h1>
+      <p data-reveal data-reveal-delay="160">
+        Propello turns briefs, scope, pricing, and brand context into polished,
+        client-ready proposals your team can review, tailor, and ship faster.
+      </p>
+      <div class="hero__actions" data-reveal data-reveal-delay="240">
+        <a class="btn btn--primary" href="index.html">
+          Open app
+          <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a class="btn btn--ghost" href="#features">See how it works</a>
+      </div>
+      <div class="hero__stats" data-reveal data-reveal-delay="320">
+        <div><strong><span data-count="10" data-suffix="k+">0</span></strong><span>Proposals shaped</span></div>
+        <div><strong>&lt; 1 min</strong><span>To first draft</span></div>
+        <div><strong><span data-count="24">0</span></strong><span>Reusable scope blocks</span></div>
+        <div><strong><span data-count="100" data-suffix="%">0</span></strong><span>Brand control</span></div>
+      </div>
+    </section>
+
+    <!-- Solutions split -->
+    <section class="split shell" id="solutions">
+      <div class="split__head">
+        <span class="eyebrow" data-reveal>Solutions</span>
+        <h2 data-reveal data-reveal-delay="80">Turn scattered briefs into signed-ready proposals.</h2>
+      </div>
+      <div class="split__aside">
+        <p data-reveal data-reveal-delay="120">
+          Automate the heavy lifting of structuring scope, pricing, and terms — so your
+          team spends its time on judgment, not formatting.
         </p>
-        <div class="marketing-hero__actions" data-reveal>
-          <a class="marketing-btn marketing-btn--primary" href="index.html">Open app</a>
-          <a class="marketing-btn marketing-btn--ghost" href="about.html">About us</a>
+        <div class="hero__actions" data-reveal data-reveal-delay="180">
+          <a class="btn btn--primary" href="index.html">
+            Open app
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn--ghost" href="#keyfeatures">View demo</a>
         </div>
-        <div class="marketing-proof" aria-label="Propello highlights" data-reveal>
-          <span><strong>Blue-first</strong> brand system</span>
-          <span><strong>Industry-aware</strong> setup</span>
-          <span><strong>Export-ready</strong> PDFs</span>
-        </div>
-      </div>
-
-      <aside class="hero-signal-panel" aria-label="Live proposal system preview" data-reveal>
-        <span class="hero-signal-panel__label">Proposal system</span>
-        <strong>Brief to signed-ready draft</strong>
-        <div class="hero-signal-panel__rows">
-          <span>Scope blocks</span><b>24</b>
-          <span>Review gates</span><b>4</b>
-          <span>Brand controls</span><b>Active</b>
-        </div>
-      </aside>
-    </section>
-
-    <section class="marketing-section landing-panel landing-panel--split" data-scene-step="1">
-      <div class="section-heading" data-reveal>
-        <span class="marketing-eyebrow">From brief to structure</span>
-        <h2>Every moving part lands in the right place.</h2>
-      </div>
-      <div class="story-stack" aria-label="Proposal setup flow">
-        <article class="story-card" data-reveal>
-          <span>01</span>
-          <h3>Upload the source</h3>
-          <p>Start with a brief, RFP, requirements document, or messy internal notes.</p>
-        </article>
-        <article class="story-card" data-reveal>
-          <span>02</span>
-          <h3>Shape the scope</h3>
-          <p>Turn services, exclusions, timelines, and assumptions into reusable blocks.</p>
-        </article>
-        <article class="story-card" data-reveal>
-          <span>03</span>
-          <h3>Review with guardrails</h3>
-          <p>Keep judgment in the loop before a proposal goes to a client.</p>
-        </article>
       </div>
     </section>
 
-    <section class="marketing-section landing-panel landing-panel--metrics" data-scene-step="2">
-      <div class="section-heading section-heading--center" data-reveal>
-        <span class="marketing-eyebrow">Pricing and review stay visible</span>
-        <h2>Not just faster. Easier to trust.</h2>
+    <!-- Partners marquee -->
+    <section class="partners shell">
+      <p class="partners__label" data-reveal>Built for teams across every service industry</p>
+      <div class="marquee" data-reveal data-reveal-delay="120">
+        <div class="marquee__track">
+          <span>Agencies</span><span>Consulting</span><span>IT Services</span><span>Creative Studios</span>
+          <span>Legal</span><span>Engineering</span><span>Finance</span><span>Marketing</span>
+          <span>Agencies</span><span>Consulting</span><span>IT Services</span><span>Creative Studios</span>
+          <span>Legal</span><span>Engineering</span><span>Finance</span><span>Marketing</span>
+        </div>
       </div>
-      <div class="metric-grid" aria-label="Propello workflow metrics">
-        <article data-reveal>
-          <span>Draft speed</span>
-          <strong>&lt; 1 min</strong>
-          <p>Move from requirements to a usable first draft without starting from a blank page.</p>
+    </section>
+
+    <!-- Feature trio -->
+    <section class="trio shell" id="features">
+      <div class="section-head center">
+        <span class="eyebrow" data-reveal>Features</span>
+        <h2 data-reveal data-reveal-delay="80">Everything you need to ship proposals.</h2>
+        <p data-reveal data-reveal-delay="160">Explore the core capabilities that make Propello essential to a fast, consistent proposal workflow.</p>
+      </div>
+      <div class="trio__grid">
+        <article class="feature-card" data-reveal>
+          <div class="feature-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.4L12 15l-1.9-4.6L5.5 9l4.6-1.4L12 3zM19 14l.9 2.2L22 17l-2.1.8L19 20l-.9-2.2L16 17l2.1-.8L19 14z" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>AI drafting</h3>
+          <p>Generate structured, on-brand proposals from a brief, RFP, or messy internal notes.</p>
         </article>
-        <article data-reveal>
-          <span>Scope clarity</span>
-          <strong>Built in</strong>
-          <p>Use guardrails, exclusions, and deliverables so proposals stay precise.</p>
+        <article class="feature-card" data-reveal data-reveal-delay="90">
+          <div class="feature-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Scope clarity</h3>
+          <p>Turn services, exclusions, timelines, and assumptions into reusable, precise blocks.</p>
         </article>
-        <article data-reveal>
-          <span>Pricing control</span>
-          <strong>PHP-ready</strong>
-          <p>Keep line items, totals, and package logic visible before export.</p>
+        <article class="feature-card" data-reveal data-reveal-delay="180">
+          <div class="feature-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M7 6h7a3 3 0 010 6H8a3 3 0 000 6h8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>Pricing control</h3>
+          <p>Keep line items, totals, and package logic visible and PHP-ready before export.</p>
         </article>
       </div>
     </section>
 
-    <section class="marketing-section landing-panel landing-panel--trust" data-scene-step="3">
-      <div class="trust-copy" data-reveal>
-        <span class="marketing-eyebrow">Built for internal teams first</span>
-        <h2>Controls where your team actually needs them.</h2>
-        <p>
-          Propello keeps templates, reusable blocks, tone, proposal color, and review
-          status close to the drafting flow, so teams can move quickly without losing
-          consistency.
-        </p>
+    <!-- Numbered key features -->
+    <section class="keyfeatures shell" id="keyfeatures">
+      <div class="section-head" data-reveal>
+        <span class="eyebrow">About the platform</span>
+        <h2>Key capabilities</h2>
+        <p>The functionality that drives a faster, more trustworthy proposal process.</p>
       </div>
-      <div class="trust-grid" aria-label="Propello controls">
-        <article data-reveal>
+
+      <!-- 01 -->
+      <div class="kf-row">
+        <div class="kf-row__copy" data-reveal>
+          <div class="kf-row__num">01</div>
+          <span class="eyebrow">Feature 01</span>
+          <h3>Simplify complex workflows.</h3>
+          <p>Propello structures scope, deliverables, and terms automatically — reducing manual formatting and getting you from brief to draft in moments.</p>
+          <a class="btn btn--ghost" href="index.html">Get started</a>
+        </div>
+        <div class="kf-row__media" data-reveal data-reveal-delay="120">
+          <div class="mock">
+            <div class="mock__bar"><span class="mock__dot"></span><span class="mock__dot"></span><span class="mock__dot"></span></div>
+            <div class="mock__panel">
+              <div class="mock__line accent w-40"></div>
+              <div class="mock__line w-80"></div>
+              <div class="mock__line w-60"></div>
+              <div class="mock__line w-80"></div>
+              <div class="mock__chips">
+                <span class="mock__chip">Scope</span><span class="mock__chip">Timeline</span><span class="mock__chip">Assumptions</span><span class="mock__chip">Exclusions</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 02 -->
+      <div class="kf-row">
+        <div class="kf-row__copy" data-reveal>
+          <div class="kf-row__num">02</div>
+          <span class="eyebrow">Feature 02</span>
+          <h3>Pricing you can defend.</h3>
+          <p>Keep every line item, package, and total visible. Propello turns your pricing logic into clean tables you can review before anything reaches a client.</p>
+          <a class="btn btn--ghost" href="index.html">Get started</a>
+        </div>
+        <div class="kf-row__media" data-reveal data-reveal-delay="120">
+          <div class="mock">
+            <div class="mock__bar"><span class="mock__dot"></span><span class="mock__dot"></span><span class="mock__dot"></span></div>
+            <div class="mock__panel">
+              <div class="mock__row"><span>Discovery &amp; strategy</span><b>₱ 45,000</b></div>
+              <div class="mock__row"><span>Design system</span><b>₱ 80,000</b></div>
+              <div class="mock__row"><span>Build &amp; QA</span><b>₱ 120,000</b></div>
+              <div class="mock__row"><span>Total</span><b>₱ 245,000</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03 -->
+      <div class="kf-row">
+        <div class="kf-row__copy" data-reveal>
+          <div class="kf-row__num">03</div>
+          <span class="eyebrow">Feature 03</span>
+          <h3>Brand-consistent output.</h3>
+          <p>Apply your logo, proposal color, and tone in one place, then export a polished PDF that looks the same every time — ready to share.</p>
+          <a class="btn btn--ghost" href="index.html">Get started</a>
+        </div>
+        <div class="kf-row__media" data-reveal data-reveal-delay="120">
+          <div class="mock">
+            <div class="mock__bar"><span class="mock__dot"></span><span class="mock__dot"></span><span class="mock__dot"></span></div>
+            <div class="mock__panel">
+              <div class="mock__line accent w-60"></div>
+              <div class="mock__line w-40"></div>
+              <div class="mock__line w-80"></div>
+              <div class="mock__line w-80"></div>
+              <div class="mock__line w-60"></div>
+              <div class="mock__chips"><span class="mock__chip">Logo</span><span class="mock__chip">Brand color</span><span class="mock__chip">PDF export</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tailored solutions grid -->
+    <section class="tailored shell">
+      <div class="section-head">
+        <span class="eyebrow" data-reveal>Solutions</span>
+        <h2 data-reveal data-reveal-delay="80">Tailored for the way your team works.</h2>
+        <p data-reveal data-reveal-delay="160">Controls where your team actually needs them — close to the drafting flow.</p>
+      </div>
+      <div class="tailored__grid">
+        <article class="tailored-card" data-reveal>
           <span>Brand</span>
-          <strong>Logo and main proposal color</strong>
+          <h3>Logo &amp; proposal color</h3>
+          <p>Lock visual identity once and keep every export perfectly on brand.</p>
         </article>
-        <article data-reveal>
+        <article class="tailored-card" data-reveal data-reveal-delay="90">
           <span>Industry</span>
-          <strong>Templates and terminology by sector</strong>
+          <h3>Profiles by sector</h3>
+          <p>Templates, terminology, and deliverables tuned to your service industry.</p>
         </article>
-        <article data-reveal>
+        <article class="tailored-card" data-reveal data-reveal-delay="120">
           <span>Governance</span>
-          <strong>Review status, versions, and notes</strong>
+          <h3>Review gates &amp; versions</h3>
+          <p>Keep judgment in the loop with review status, versions, and notes.</p>
         </article>
-        <article data-reveal>
+        <article class="tailored-card" data-reveal data-reveal-delay="180">
           <span>Output</span>
-          <strong>Clean PDFs ready for sharing</strong>
+          <h3>Clean, shareable PDFs</h3>
+          <p>Export client-ready documents that read clearly and price precisely.</p>
         </article>
       </div>
     </section>
 
-    <section class="landing-panel landing-final" data-scene-step="4">
-      <div class="launch-card" data-reveal>
-        <span class="marketing-eyebrow">Propel the next proposal</span>
-        <h2>Open Propello and build the next draft.</h2>
-        <p>
-          Use the internal toolkit, tailor the proposal to your industry, and export a
-          branded document when the team is ready.
-        </p>
-        <div class="marketing-hero__actions">
-          <a class="marketing-btn marketing-btn--primary" href="index.html">Open app</a>
-          <a class="marketing-btn marketing-btn--ghost" href="pricing.html">View pricing</a>
+    <!-- Benefits / stats -->
+    <section class="benefits shell">
+      <div class="benefits__inner">
+        <div class="section-head center" style="margin-bottom: 0;">
+          <span class="eyebrow" data-reveal>Benefits</span>
+          <h2 data-reveal data-reveal-delay="80">Faster. Clearer. On brand.</h2>
+        </div>
+        <div class="stats-grid">
+          <div class="stat" data-reveal>
+            <div class="stat__num"><span data-count="62" data-prefix="+" data-suffix="%">0</span></div>
+            <div class="stat__label">Faster turnaround</div>
+          </div>
+          <div class="stat" data-reveal data-reveal-delay="90">
+            <div class="stat__num"><span data-count="100" data-suffix="%">0</span></div>
+            <div class="stat__label">Brand consistency</div>
+          </div>
+          <div class="stat" data-reveal data-reveal-delay="150">
+            <div class="stat__num"><span data-count="10" data-suffix="k+">0</span></div>
+            <div class="stat__label">Proposals shaped</div>
+          </div>
+          <div class="stat" data-reveal data-reveal-delay="210">
+            <div class="stat__num"><span data-count="4">0</span></div>
+            <div class="stat__label">Review gates</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials shell">
+      <div class="section-head center">
+        <span class="eyebrow" data-reveal>Testimonials</span>
+        <h2 data-reveal data-reveal-delay="80">What teams say.</h2>
+      </div>
+      <div class="testi-grid">
+        <article class="testi-card" data-reveal>
+          <div class="testi-card__stars">★★★★★</div>
+          <p>“We cut proposal turnaround from days to the same afternoon. The scope blocks alone are worth it.”</p>
+          <div class="testi-card__who">
+            <span class="testi-card__avatar"></span>
+            <div><strong>Mara Santos</strong><span>Founder, Northlight Studio</span></div>
+          </div>
+        </article>
+        <article class="testi-card" data-reveal data-reveal-delay="90">
+          <div class="testi-card__stars">★★★★★</div>
+          <p>“Pricing finally stays visible end to end. No more reconciling numbers across three documents.”</p>
+          <div class="testi-card__who">
+            <span class="testi-card__avatar"></span>
+            <div><strong>Jhelp Reyes</strong><span>Operations Lead, Cobalt IT</span></div>
+          </div>
+        </article>
+        <article class="testi-card" data-reveal data-reveal-delay="180">
+          <div class="testi-card__stars">★★★★★</div>
+          <p>“Every proposal looks like us now. The brand controls keep the whole team consistent.”</p>
+          <div class="testi-card__who">
+            <span class="testi-card__avatar"></span>
+            <div><strong>Dana Cruz</strong><span>Principal, Meridian Consulting</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing shell" id="pricing">
+      <div class="section-head center">
+        <span class="eyebrow" data-reveal>Pricing</span>
+        <h2 data-reveal data-reveal-delay="80">Flexible plans for every team.</h2>
+        <p data-reveal data-reveal-delay="160">Start free during preview. Pricing in PHP, with BPI and GCash at launch.</p>
+      </div>
+      <div class="price-grid">
+        <article class="price-card" data-reveal>
+          <h3>Starter</h3>
+          <p class="price-card__desc">Ideal for individuals and small teams shaping their first proposals.</p>
+          <div class="price-card__price"><b>₱990</b><span>/mo</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 2 users</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Core AI drafting</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Reusable scope blocks</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> PDF export</li>
+          </ul>
+          <a class="btn btn--ghost" href="index.html">Get started</a>
+        </article>
+
+        <article class="price-card price-card--featured" data-reveal data-reveal-delay="90">
+          <span class="price-card__tag">Most popular</span>
+          <h3>Team</h3>
+          <p class="price-card__desc">For growing teams that need governance and brand controls.</p>
+          <div class="price-card__price"><b>₱2,490</b><span>/mo</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 10 users</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Advanced AI drafting</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Review gates &amp; versions</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Brand controls</li>
+          </ul>
+          <a class="btn btn--primary" href="index.html">Start free trial</a>
+        </article>
+
+        <article class="price-card" data-reveal data-reveal-delay="180">
+          <h3>Studio</h3>
+          <p class="price-card__desc">For larger teams needing industry profiles and priority support.</p>
+          <div class="price-card__price"><b>₱4,990</b><span>/mo</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited users</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Custom industry profiles</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
+          </ul>
+          <a class="btn btn--ghost" href="index.html">Talk to us</a>
+        </article>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta shell">
+      <div class="cta__inner" data-reveal>
+        <span class="eyebrow">Propel the next proposal</span>
+        <h2>Grow with Propello.<br/>Start your next draft today.</h2>
+        <p>Use the toolkit, tailor it to your industry, and export a branded document when your team is ready.</p>
+        <div class="cta__actions">
+          <a class="btn btn--primary" href="index.html">
+            Open app
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn--ghost" href="#pricing">View pricing</a>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="marketing-footer">
-    <span>Propello</span>
-    <a href="about.html">About us</a>
-    <a href="pricing.html">Pricing</a>
-    <a href="index.html">Open app</a>
+  <!-- Footer -->
+  <footer class="footer shell">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <img src="assets/logo-light.svg" alt="Propello" />
+        <p>The proposal generator for professional service teams. Move deals forward, faster.</p>
+        <a class="mail" href="mailto:hello@propello.app">hello@propello.app</a>
+      </div>
+      <div class="footer__col">
+        <h4>Menu</h4>
+        <a href="#solutions">Solutions</a>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="about.html">About</a>
+      </div>
+      <div class="footer__col">
+        <h4>Socials</h4>
+        <a href="#">Instagram</a>
+        <a href="#">LinkedIn</a>
+        <a href="#">X</a>
+        <a href="index.html">Open app</a>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© 2026 Propello · Confidential</span>
+      <span>Built for service teams · www.propello.app</span>
+    </div>
   </footer>
 
-  <script type="module" src="landing-scene.js?v=2"></script>
+  <script src="marketing.js?v=1"></script>
 </body>
 </html>

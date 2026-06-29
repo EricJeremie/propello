@@ -4,53 +4,147 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Propello — Pricing</title>
+  <meta name="description" content="Flexible Propello plans for every team. Start free during preview. Pricing in PHP with BPI and GCash at launch." />
   <link rel="icon" href="assets/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=42" />
+  <link rel="stylesheet" href="marketing.css?v=1" />
 </head>
 <body class="marketing-page">
 
-  <header class="marketing-nav">
-    <a class="marketing-nav__brand" href="home.html" aria-label="Propello home">
-      <img src="assets/logo.svg" alt="Propello" />
+  <div class="bg-field" aria-hidden="true">
+    <span class="bg-orb bg-orb--1"></span>
+    <span class="bg-orb bg-orb--2"></span>
+    <span class="bg-orb bg-orb--3"></span>
+  </div>
+
+  <div class="scroll-progress" aria-hidden="true"></div>
+  <div class="scroll-readout" aria-hidden="true"><span>0%</span></div>
+
+  <header class="nav">
+    <a class="nav__brand" href="home.html" aria-label="Propello home">
+      <img src="assets/logo-light.svg" alt="Propello" />
     </a>
-    <nav class="marketing-nav__links" aria-label="Main navigation">
-      <a href="home.html">Home</a>
-      <a href="about.html">About us</a>
+    <nav class="nav__links" aria-label="Main navigation">
+      <a href="home.html#solutions">Solutions</a>
+      <a href="home.html#features">Features</a>
       <a class="is-active" href="pricing.html">Pricing</a>
+      <a href="about.html">About</a>
     </nav>
-    <a class="marketing-nav__cta" href="index.html">Open app</a>
+    <div class="nav__right">
+      <a class="btn btn--primary nav__cta" href="index.html">
+        Open app
+        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <button class="nav__burger" aria-label="Open menu"><span></span></button>
+    </div>
   </header>
 
+  <nav class="mobile-menu" aria-label="Mobile navigation">
+    <a href="home.html#solutions">Solutions</a>
+    <a href="home.html#features">Features</a>
+    <a href="pricing.html">Pricing</a>
+    <a href="about.html">About</a>
+    <a class="btn btn--primary" href="index.html">Open app</a>
+  </nav>
+
   <main>
-    <section class="pricing-hero">
-      <div class="pricing-card">
-        <span class="pricing-card__badge">Coming soon</span>
-        <h1>Pricing is coming soon.</h1>
-        <p>
-          Propello is internal-first for now. Public plans will follow once packaging and usage
-          patterns settle.
-        </p>
-        <div class="pricing-card__actions">
-          <a class="marketing-btn marketing-btn--primary" href="index.html">Use current app</a>
-          <a class="marketing-btn marketing-btn--ghost" href="home.html">Back to home</a>
-        </div>
+    <section class="pricing-hero shell">
+      <span class="eyebrow" data-reveal style="justify-content:center;display:flex;">Pricing</span>
+      <h1 data-reveal data-reveal-delay="80">Flexible plans for <span class="grad">every team.</span></h1>
+      <p data-reveal data-reveal-delay="160">Start free during preview. Pricing in PHP, with BPI and GCash supported at launch.</p>
+    </section>
+
+    <section class="pricing shell" style="padding-top: 2rem;">
+      <div class="price-grid">
+        <article class="price-card" data-reveal>
+          <h3>Starter</h3>
+          <p class="price-card__desc">Ideal for individuals and small teams shaping their first proposals.</p>
+          <div class="price-card__price"><b>₱990</b><span>/mo</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 2 users</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Core AI drafting</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Reusable scope blocks</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> PDF export</li>
+          </ul>
+          <a class="btn btn--ghost" href="index.html">Get started</a>
+        </article>
+
+        <article class="price-card price-card--featured" data-reveal data-reveal-delay="90">
+          <span class="price-card__tag">Most popular</span>
+          <h3>Team</h3>
+          <p class="price-card__desc">For growing teams that need governance and brand controls.</p>
+          <div class="price-card__price"><b>₱2,490</b><span>/mo</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Up to 10 users</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Advanced AI drafting</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Review gates &amp; versions</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Brand controls</li>
+          </ul>
+          <a class="btn btn--primary" href="index.html">Start free trial</a>
+        </article>
+
+        <article class="price-card" data-reveal data-reveal-delay="180">
+          <h3>Studio</h3>
+          <p class="price-card__desc">For larger teams needing industry profiles and priority support.</p>
+          <div class="price-card__price"><b>₱4,990</b><span>/mo</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Unlimited users</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Custom industry profiles</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Dedicated onboarding</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Priority support</li>
+          </ul>
+          <a class="btn btn--ghost" href="index.html">Talk to us</a>
+        </article>
       </div>
-      <div class="pricing-stack" aria-label="Upcoming pricing tiers preview">
-        <div><span>Starter</span><strong>Draft faster</strong></div>
-        <div><span>Team</span><strong>Collaborate</strong></div>
-        <div><span>Industry</span><strong>Customize deeply</strong></div>
+      <p class="billing-note" data-reveal style="text-align:center;">Preview pricing — internal teams are free during the current beta. Plans finalize at launch.</p>
+    </section>
+
+    <section class="cta shell">
+      <div class="cta__inner" data-reveal>
+        <span class="eyebrow">Get started</span>
+        <h2>Try Propello free during preview.</h2>
+        <p>No commitment. Open the app, draft a proposal, and see the workflow for yourself.</p>
+        <div class="cta__actions">
+          <a class="btn btn--primary" href="index.html">
+            Open app
+            <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a class="btn btn--ghost" href="about.html">Learn more</a>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="marketing-footer">
-    <span>Propello</span>
-    <a href="home.html">Home</a>
-    <a href="about.html">About us</a>
-    <a href="index.html">Open app</a>
+  <footer class="footer shell">
+    <div class="footer__top">
+      <div class="footer__brand">
+        <img src="assets/logo-light.svg" alt="Propello" />
+        <p>The proposal generator for professional service teams. Move deals forward, faster.</p>
+        <a class="mail" href="mailto:hello@propello.app">hello@propello.app</a>
+      </div>
+      <div class="footer__col">
+        <h4>Menu</h4>
+        <a href="home.html#solutions">Solutions</a>
+        <a href="home.html#features">Features</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="about.html">About</a>
+      </div>
+      <div class="footer__col">
+        <h4>Socials</h4>
+        <a href="#">Instagram</a>
+        <a href="#">LinkedIn</a>
+        <a href="#">X</a>
+        <a href="index.html">Open app</a>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© 2026 Propello · Confidential</span>
+      <span>Built for service teams · www.propello.app</span>
+    </div>
   </footer>
+
+  <script src="marketing.js?v=1"></script>
 </body>
 </html>
