@@ -49,6 +49,8 @@ html.lenis body {
   scroll-behavior: auto !important;
 }
 
+html { background: var(--dark); }
+
 body.marketing-page {
   min-height: 100vh;
   overflow-x: hidden;
@@ -58,6 +60,22 @@ body.marketing-page {
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* WebGL background canvas — fixed, behind all content (home page only). */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  display: block;
+  pointer-events: none;
+}
+
+/* Let the 3D scene show through on the home page; the dark base lives on <html>. */
+body.page-home {
+  background: transparent;
 }
 
 body.menu-open {
