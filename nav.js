@@ -46,19 +46,6 @@ export function initLayout({ activePage = '', onSettings = null } = {}) {
       </div>
     </div>
     <nav class="app-sidebar__nav">
-      <a href="home.html" class="app-sidebar__item" data-page="home" title="Home">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
-        <span class="app-sidebar__label">Home</span>
-      </a>
-      <a href="about.html" class="app-sidebar__item" data-page="about" title="About us">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.6-4 4.2-6 8-6s6.4 2 8 6"/></svg>
-        <span class="app-sidebar__label">About us</span>
-      </a>
-      <a href="pricing.html" class="app-sidebar__item" data-page="pricing" title="Pricing">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V7H4v10h9"/><path d="M8 11h6"/><path d="M17 18h4"/><path d="M19 16v4"/></svg>
-        <span class="app-sidebar__label">Pricing</span>
-      </a>
-      <div class="app-sidebar__divider"></div>
       <a href="dashboard.html" class="app-sidebar__item" data-page="dashboard" title="My Documents">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         <span class="app-sidebar__label">My Documents</span>

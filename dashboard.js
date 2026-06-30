@@ -1,6 +1,6 @@
 'use strict';
 
-import { initLayout } from './nav.js?v=29';
+import { initLayout } from './nav.js?v=30';
 import {
   getSession, signIn, signUp, signOut, onAuthChange,
   fetchUserProposals, fetchUserQuestionnaires,
