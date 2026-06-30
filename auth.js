@@ -1,25 +1,21 @@
 /* ============================================================
    Propello auth page logic
-   Login is a single step. Sign-up is a 4-step wizard:
-     1. Account   (name, email, password)
-     2. Business  (KYC: company, role, phone, country, size)
-     3. Industry  (pick a profile)
-     4. Tailoring (industry-specific questions)
-   Everything is stored in the user's Supabase metadata so proposals
-   can be tailored to their industry. On success it forwards into the app.
+   Login is a single simple form. Sign-up is a Typeform-style flow:
+   one question at a time (account → KYC → industry → tailoring),
+   with click/Enter to advance, letter-key shortcuts on choices, a
+   progress bar, and smooth slide transitions. Everything is stored
+   in the user's Supabase metadata so proposals fit their industry.
    ============================================================ */
 'use strict';
 
 import { getSession, signIn, signUp } from './supabase.js?v=29';
-import {
-  industryOptionsHtml,
-  getIndustryProfile,
-  collectIndustryAnswers,
-  buildIndustryMetadata,
-  areIndustryAnswersComplete,
-} from './industry-profiles.js?v=1';
+import { INDUSTRY_PROFILES, getIndustryProfile, buildIndustryMetadata } from './industry-profiles.js?v=1';
 
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
 const params = new URLSearchParams(location.search);
 
 /* Only allow same-origin relative redirects — never an absolute/remote URL. */
@@ -30,32 +26,48 @@ function safeNext(value) {
 }
 const NEXT = safeNext(params.get('next')) || 'dashboard.html';
 
-const form = $('authForm');
-const heading = $('authHeading');
-const subhead = $('authSubhead');
+/* ---------- The sign-up questionnaire ---------- */
+const COUNTRIES = ['Philippines', 'United States', 'Canada', 'United Kingdom', 'Australia', 'Singapore',
+  'Malaysia', 'Indonesia', 'Thailand', 'Vietnam', 'India', 'United Arab Emirates', 'Japan', 'Hong Kong',
+  'New Zealand', 'Germany', 'Netherlands', 'Other'];
+const SIZES = ['Just me', '2–10', '11–50', '51–200', '201–500', '500+'];
+// All industry profiles ship 3 tailoring questions; used only to keep the
+// progress bar steady before an industry is picked.
+const EST_TAILORING = 3;
+
+const BASE = [
+  { id: 'name', type: 'text', label: "First — what should we call you?", hint: "Your full name, as it'll appear on proposals.", placeholder: 'Jane Santos', autocomplete: 'name', required: true, emptyMsg: 'Please enter your name.' },
+  { id: 'email', type: 'email', label: "What's your email?", hint: "You'll use this to sign in.", placeholder: 'you@company.com', autocomplete: 'email', required: true, validate: (v) => isValidEmail(v) ? null : 'Please enter a valid email address.' },
+  { id: 'password', type: 'password', label: 'Set a password', hint: 'At least 6 characters.', placeholder: '••••••••', autocomplete: 'new-password', required: true, validate: (v) => v.length >= 6 ? null : 'Use at least 6 characters.' },
+  { id: 'company', type: 'text', label: "What's your business called?", placeholder: 'Northlight Studio', autocomplete: 'organization', required: true, emptyMsg: 'Please enter your business name.' },
+  { id: 'role', type: 'text', label: 'And your role there?', placeholder: 'Founder, Account Manager, …', autocomplete: 'organization-title', required: true, emptyMsg: 'Please enter your role.' },
+  { id: 'phone', type: 'tel', label: 'Best number to reach you?', placeholder: '+63 917 000 0000', autocomplete: 'tel', required: true, emptyMsg: 'Please enter your phone number.' },
+  { id: 'country', type: 'select', label: 'Where are you based?', placeholder: 'Select your country', options: COUNTRIES.map((c) => ({ value: c, label: c })), required: true, emptyMsg: 'Please select your country.' },
+  { id: 'size', type: 'choice', label: 'How big is your team?', options: SIZES.map((s) => ({ value: s, label: s })), required: true, emptyMsg: 'Please choose a team size.' },
+  { id: 'industry', type: 'choice', label: 'Which industry are you in?', hint: "We'll tailor proposal language, scope, and pricing to your field.", options: INDUSTRY_PROFILES.map((p) => ({ value: p.id, label: p.name })), required: true, isIndustry: true, emptyMsg: 'Please choose your industry.' },
+];
+
+/* ---------- Icons ---------- */
+const ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13"/><path d="M12 5l7 7-7 7"/></svg>';
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const CHECK = '<svg class="tf-choice__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
+/* ---------- State + elements ---------- */
+let mode = params.get('mode') === 'signup' ? 'signup' : 'login';
+let slides = BASE.slice();
+let idx = 0;
+let advanceTimer = 0;
+let submitting = false;
+const answers = {};
+
+const loginForm = $('loginForm');
+const signupFlow = $('signupFlow');
+const tfStage = $('tfStage');
+const tfFill = $('tfFill');
+const tfStatus = $('tfStatus');
 const tabLogin = $('tabLogin');
 const tabSignup = $('tabSignup');
 const foot = $('authFoot');
-const statusEl = $('authStatus');
-const submitBtn = $('authSubmit');
-const backBtn = $('authBack');
-const stepsEl = $('authSteps');
-const stepsFill = $('authStepsFill');
-const stepsLabel = $('authStepsLabel');
-const nameField = $('nameField');
-const nameInput = $('authName');
-const emailInput = $('authEmail');
-const passwordInput = $('authPassword');
-const industrySelect = $('kycIndustry');
-
-const STEP_LABELS = ['Account', 'Business details', 'Industry', 'Tailoring'];
-const TOTAL_STEPS = 4;
-
-let mode = params.get('mode') === 'signup' ? 'signup' : 'login';
-let step = 1;
-
-/* Populate the industry dropdown from the shared profile data. */
-industrySelect.innerHTML = industryOptionsHtml('', { includePlaceholder: true });
 
 /* If a valid session already exists, skip the form and go straight in. */
 (async () => {
@@ -65,202 +77,293 @@ industrySelect.innerHTML = industryOptionsHtml('', { includePlaceholder: true })
   } catch { /* offline — stay on the page */ }
 })();
 
+/* ---------- Status helpers ---------- */
 function setStatus(message, kind) {
-  if (!message) {
-    statusEl.hidden = true;
-    statusEl.textContent = '';
-    return;
-  }
-  statusEl.textContent = message;
-  statusEl.className = `auth-status auth-status--${kind === 'ok' ? 'ok' : 'error'}`;
-  statusEl.hidden = false;
+  if (!message) { tfStatus.hidden = true; tfStatus.textContent = ''; return; }
+  tfStatus.textContent = message;
+  tfStatus.className = `auth-status tf__status auth-status--${kind === 'ok' ? 'ok' : 'error'}`;
+  tfStatus.hidden = false;
+}
+function setLoginStatus(message, kind) {
+  const el = $('loginStatus');
+  if (!message) { el.hidden = true; el.textContent = ''; return; }
+  el.textContent = message;
+  el.className = `auth-status auth-status--${kind === 'ok' ? 'ok' : 'error'}`;
+  el.hidden = false;
 }
 
-const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+/* ---------- Flow helpers ---------- */
+function totalSteps() {
+  return answers.industry ? slides.length : BASE.length + EST_TAILORING;
+}
 
-function showStep(n) {
-  step = n;
-  form.querySelectorAll('.auth-step').forEach((el) => {
-    el.hidden = Number(el.dataset.step) !== n;
+// Append (or refresh) the chosen industry's tailoring questions after the
+// industry slide, so the flow length reflects the selected field.
+function rebuildTailoring() {
+  slides = slides.filter((s) => !s._tailoring);
+  const profile = getIndustryProfile(answers.industry);
+  (profile && profile.questions ? profile.questions : []).forEach((q) => {
+    slides.push({ id: q.id, type: 'choice', label: q.label, options: q.options, required: q.required !== false, _tailoring: true });
   });
-  stepsFill.style.width = `${(n / TOTAL_STEPS) * 100}%`;
-  stepsLabel.textContent = `Step ${n} of ${TOTAL_STEPS} · ${STEP_LABELS[n - 1]}`;
-  backBtn.hidden = n === 1;
-  submitBtn.textContent = n < TOTAL_STEPS ? 'Continue' : 'Create account';
-  setStatus('', '');
 }
 
-function applyMode(next) {
-  mode = next === 'signup' ? 'signup' : 'login';
-  const isSignUp = mode === 'signup';
+function inputType(q) {
+  if (q.type === 'email') return 'email';
+  if (q.type === 'tel') return 'tel';
+  if (q.type === 'password') return 'password';
+  return 'text';
+}
 
-  heading.textContent = isSignUp ? 'Create your Propello account' : 'Sign in to Propello';
-  subhead.textContent = isSignUp
-    ? 'Tell us a bit about you so proposals fit your business.'
-    : 'Use your email and password to access the app.';
-
-  tabLogin.setAttribute('aria-selected', String(!isSignUp));
-  tabSignup.setAttribute('aria-selected', String(isSignUp));
-
-  nameField.hidden = !isSignUp;
-  nameInput.required = isSignUp;
-  passwordInput.autocomplete = isSignUp ? 'new-password' : 'current-password';
-
-  stepsEl.hidden = !isSignUp;
-
-  if (isSignUp) {
-    showStep(1);
-  } else {
-    form.querySelectorAll('.auth-step').forEach((el) => { el.hidden = Number(el.dataset.step) !== 1; });
-    backBtn.hidden = true;
-    submitBtn.textContent = 'Login';
+function controlHtml(q) {
+  if (q.type === 'choice') {
+    const opts = q.options.map((o, i) => {
+      const selected = answers[q.id] === o.value;
+      const key = i < 26 ? String.fromCharCode(65 + i) : String(i + 1);
+      return `<button type="button" class="tf-choice${selected ? ' is-selected' : ''}" data-value="${esc(o.value)}" role="option" aria-selected="${selected}">
+          <span class="tf-choice__key">${key}</span>
+          <span class="tf-choice__label">${esc(o.label)}</span>
+          ${CHECK}
+        </button>`;
+    }).join('');
+    return `<div class="tf-choices" role="listbox" aria-label="${esc(q.label)}">${opts}</div>`;
   }
+  if (q.type === 'select') {
+    const opts = `<option value="" disabled ${answers[q.id] ? '' : 'selected'}>${esc(q.placeholder || 'Select…')}</option>` +
+      q.options.map((o) => `<option value="${esc(o.value)}" ${answers[q.id] === o.value ? 'selected' : ''}>${esc(o.label)}</option>`).join('');
+    return `<div class="tf-field"><select id="tfInput" class="tf-q__input tf-q__input--select">${opts}</select></div>`;
+  }
+  const eye = q.type === 'password'
+    ? `<button type="button" class="tf-eye" id="tfEye" aria-label="Show password" aria-pressed="false">${EYE}</button>` : '';
+  return `<div class="tf-field">
+      <input id="tfInput" class="tf-q__input${q.type === 'password' ? ' has-eye' : ''}" type="${inputType(q)}"
+        placeholder="${esc(q.placeholder || '')}" autocomplete="${esc(q.autocomplete || 'off')}" value="${esc(answers[q.id] || '')}" />
+      ${eye}
+    </div>`;
+}
 
-  foot.innerHTML = isSignUp
+function renderSlide(dir = 1) {
+  const q = slides[idx];
+  if (!q) return;
+  setStatus('', '');
+  clearTimeout(advanceTimer);
+
+  const willSubmit = !q.isIndustry && idx === slides.length - 1;
+  const okLabel = willSubmit ? 'Create account' : 'OK';
+  const keyhint = q.type === 'choice' ? 'press a <b>letter</b> to choose' : 'press <b>Enter ↵</b>';
+  const from = dir >= 0 ? '24px' : '-24px';
+
+  tfStage.innerHTML = `
+    <div class="tf-q" data-qid="${esc(q.id)}" style="--tf-from:${from}">
+      <span class="tf-q__num">${idx + 1} ${ARROW}</span>
+      <h2 class="tf-q__label">${esc(q.label)}</h2>
+      ${q.hint ? `<p class="tf-q__hint">${esc(q.hint)}</p>` : ''}
+      ${controlHtml(q)}
+      <div class="tf-q__actions">
+        ${idx > 0 ? '<button type="button" class="btn btn--glass tf-back" id="tfBack">Back</button>' : ''}
+        <button type="button" class="btn btn--primary tf-ok" id="tfOk">${okLabel} <span class="tf-ok__kbd" aria-hidden="true">↵</span></button>
+        <span class="tf-q__keyhint">${keyhint}</span>
+      </div>
+    </div>`;
+
+  tfFill.style.width = `${Math.round((idx / Math.max(1, totalSteps() - 1)) * 100)}%`;
+
+  const slideEl = tfStage.firstElementChild;
+  requestAnimationFrame(() => slideEl.classList.add('is-in'));
+
+  if (q.type === 'choice') {
+    slideEl.querySelectorAll('.tf-choice').forEach((btn) => {
+      btn.addEventListener('click', () => selectChoice(q, btn.dataset.value));
+    });
+  } else {
+    const input = $('tfInput');
+    if (input) {
+      const sync = () => { answers[q.id] = input.value; };
+      input.addEventListener('input', sync);
+      input.addEventListener('change', sync);
+      setTimeout(() => { try { input.focus({ preventScroll: true }); } catch { input.focus(); } }, 70);
+    }
+    if (q.type === 'password') {
+      $('tfEye').addEventListener('click', () => {
+        const p = $('tfInput');
+        const showing = p.type === 'text';
+        p.type = showing ? 'password' : 'text';
+        const b = $('tfEye');
+        b.setAttribute('aria-pressed', String(!showing));
+        b.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      });
+    }
+  }
+  const ok = $('tfOk'); if (ok) ok.addEventListener('click', next);
+  const back = $('tfBack'); if (back) back.addEventListener('click', prev);
+}
+
+function selectChoice(q, value) {
+  answers[q.id] = value;
+  tfStage.querySelectorAll('.tf-choice').forEach((b) => {
+    const on = b.dataset.value === value;
+    b.classList.toggle('is-selected', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  setStatus('', '');
+  // Brief pause so the selection is visible, then advance automatically.
+  clearTimeout(advanceTimer);
+  advanceTimer = setTimeout(next, 320);
+}
+
+function readCurrent(q) {
+  if (q.type !== 'choice') {
+    const el = $('tfInput');
+    if (el) answers[q.id] = (el.value || '').trim();
+  }
+}
+
+function validate(q) {
+  const v = answers[q.id] || '';
+  if (q.required && !v) return q.emptyMsg || 'This field is required.';
+  if (q.validate) return q.validate(v);
+  return null;
+}
+
+function next() {
+  if (submitting) return;
+  const q = slides[idx];
+  readCurrent(q);
+  const err = validate(q);
+  if (err) { setStatus(err, 'error'); return; }
+
+  if (q.isIndustry) { rebuildTailoring(); idx += 1; renderSlide(1); return; }
+  if (idx === slides.length - 1) { submit(); return; }
+  idx += 1;
+  renderSlide(1);
+}
+
+function prev() {
+  if (submitting || idx === 0) return;
+  idx -= 1;
+  renderSlide(-1);
+}
+
+function renderMessage(title, sub) {
+  tfFill.style.width = '100%';
+  tfStage.innerHTML = `<div class="tf-q tf-q--message">
+      <h2 class="tf-q__label">${esc(title)}</h2>
+      ${sub ? `<p class="tf-q__hint">${esc(sub)}</p>` : ''}
+    </div>`;
+  requestAnimationFrame(() => tfStage.firstElementChild.classList.add('is-in'));
+}
+
+async function submit() {
+  submitting = true;
+  const industryId = answers.industry;
+  const profile = getIndustryProfile(industryId);
+  const tailoring = {};
+  (profile && profile.questions ? profile.questions : []).forEach((q) => {
+    if (answers[q.id]) tailoring[q.id] = answers[q.id];
+  });
+  const industryMeta = buildIndustryMetadata(industryId, tailoring);
+  const kyc = {
+    company: answers.company || '',
+    job_title: answers.role || '',
+    phone: answers.phone || '',
+    country: answers.country || '',
+    company_size: answers.size || '',
+  };
+
+  renderMessage('Creating your account…', 'Just a moment.');
+  try {
+    const { data, error } = await signUp(answers.email, answers.password, answers.name, industryMeta, kyc);
+    if (error) {
+      renderSlide(0);
+      setStatus(error.message || String(error), 'error');
+      submitting = false;
+      return;
+    }
+    // Sign-up with email confirmation returns no session yet.
+    if (!(data && data.session)) {
+      renderMessage('Almost there!', 'Check your email to confirm your account, then sign in.');
+      submitting = false;
+      return;
+    }
+    renderMessage('You\'re in!', 'Taking you to your workspace…');
+    location.replace(NEXT);
+  } catch {
+    renderSlide(0);
+    setStatus('Something went wrong. Please try again.', 'error');
+    submitting = false;
+  }
+}
+
+/* ---------- Mode switching (Login / Sign up) ---------- */
+function applyMode(target) {
+  mode = target === 'signup' ? 'signup' : 'login';
+  const su = mode === 'signup';
+
+  tabLogin.setAttribute('aria-selected', String(!su));
+  tabSignup.setAttribute('aria-selected', String(su));
+  loginForm.hidden = su;
+  signupFlow.hidden = !su;
+
+  foot.innerHTML = su
     ? 'Already have an account? <button type="button" id="switchMode" data-target="login">Sign in</button>'
     : 'New to Propello? <button type="button" id="switchMode" data-target="signup">Create an account</button>';
   $('switchMode').addEventListener('click', (e) => applyMode(e.currentTarget.dataset.target));
 
-  setStatus('', '');
+  if (su) {
+    if (answers.industry) rebuildTailoring();
+    renderSlide(0);
+  } else {
+    setLoginStatus('', '');
+  }
 }
 
-/* Per-step validation (sign-up). Returns an error string, or null if valid. */
-function validateStep(n) {
-  if (n === 1) {
-    if (!nameInput.value.trim()) return 'Please enter your full name.';
-    if (!isValidEmail(emailInput.value.trim())) return 'Please enter a valid email address.';
-    if (passwordInput.value.length < 6) return 'Password must be at least 6 characters.';
-  }
-  if (n === 2) {
-    if (!$('kycCompany').value.trim()) return 'Please enter your company or business name.';
-    if (!$('kycRole').value.trim()) return 'Please enter your role.';
-    if (!$('kycPhone').value.trim()) return 'Please enter your phone number.';
-    if (!$('kycCountry').value) return 'Please select your country.';
-    if (!$('kycSize').value) return 'Please select your company size.';
-  }
-  if (n === 3) {
-    if (!industrySelect.value) return 'Please choose your industry.';
-  }
-  if (n === 4) {
-    const profile = getIndustryProfile(industrySelect.value);
-    const answers = collectIndustryAnswers($('industryQuestions'));
-    if (!areIndustryAnswersComplete(profile, answers)) return 'Please answer the setup questions.';
-  }
-  return null;
-}
-
-/* Build the industry-specific questions for the chosen profile. */
-function renderIndustryQuestions(industryId) {
-  const container = $('industryQuestions');
-  const profile = getIndustryProfile(industryId);
-  if (!profile || !profile.questions.length) {
-    container.innerHTML = '<p class="auth-hint">No extra questions for this field — you\'re all set.</p>';
-    return;
-  }
-  container.innerHTML = profile.questions.map((q) => {
-    const opts = ['<option value="" disabled selected>Choose one</option>']
-      .concat(q.options.map((o) => `<option value="${o.value}">${o.label}</option>`))
-      .join('');
-    return `<div class="auth-field">
-        <label for="q_${q.id}">${q.label}</label>
-        <select id="q_${q.id}" class="auth-select" data-industry-question="${q.id}" required>${opts}</select>
-      </div>`;
-  }).join('');
-}
-
-industrySelect.addEventListener('change', () => renderIndustryQuestions(industrySelect.value));
-
+/* ---------- Wiring ---------- */
 tabLogin.addEventListener('click', () => applyMode('login'));
 tabSignup.addEventListener('click', () => applyMode('signup'));
-backBtn.addEventListener('click', () => { if (step > 1) showStep(step - 1); });
 
-$('togglePassword').addEventListener('click', () => {
-  const showing = passwordInput.type === 'text';
-  passwordInput.type = showing ? 'password' : 'text';
-  const btn = $('togglePassword');
-  btn.setAttribute('aria-pressed', String(!showing));
-  btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-});
-
-form.addEventListener('submit', async (e) => {
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  setStatus('', '');
-
-  if (mode === 'login') return doLogin();
-
-  // Sign-up: validate the current step, then advance or submit.
-  const err = validateStep(step);
-  if (err) { setStatus(err, 'error'); return; }
-
-  if (step < TOTAL_STEPS) {
-    if (step === 3) renderIndustryQuestions(industrySelect.value);
-    showStep(step + 1);
-    return;
-  }
-
-  await doSignup();
-});
-
-async function doLogin() {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
+  const email = $('loginEmail').value.trim();
+  const password = $('loginPassword').value;
   if (!isValidEmail(email) || !password) {
-    setStatus('Please enter your email and password.', 'error');
+    setLoginStatus('Please enter your email and password.', 'error');
     return;
   }
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Signing in…';
+  const btn = $('loginSubmit');
+  btn.disabled = true; btn.textContent = 'Signing in…';
   try {
     const { error } = await signIn(email, password);
-    if (error) { setStatus(error.message || String(error), 'error'); return; }
-    setStatus('Success! Taking you to the app…', 'ok');
+    if (error) { setLoginStatus(error.message || String(error), 'error'); return; }
+    setLoginStatus('Success! Taking you to the app…', 'ok');
     location.replace(NEXT);
   } catch {
-    setStatus('Something went wrong. Please try again.', 'error');
+    setLoginStatus('Something went wrong. Please try again.', 'error');
   } finally {
-    submitBtn.disabled = false;
-    if (mode === 'login') submitBtn.textContent = 'Login';
+    btn.disabled = false; btn.textContent = 'Login';
   }
-}
+});
 
-async function doSignup() {
-  const name = nameInput.value.trim();
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-  const industryId = industrySelect.value;
-  const answers = collectIndustryAnswers($('industryQuestions'));
-  const industryMeta = buildIndustryMetadata(industryId, answers);
-  const kyc = {
-    company: $('kycCompany').value.trim(),
-    job_title: $('kycRole').value.trim(),
-    phone: $('kycPhone').value.trim(),
-    country: $('kycCountry').value,
-    company_size: $('kycSize').value,
-  };
+$('loginEye').addEventListener('click', () => {
+  const p = $('loginPassword');
+  const showing = p.type === 'text';
+  p.type = showing ? 'password' : 'text';
+  const b = $('loginEye');
+  b.setAttribute('aria-pressed', String(!showing));
+  b.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+});
 
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Creating account…';
-  try {
-    const { data, error } = await signUp(email, password, name, industryMeta, kyc);
-    if (error) { setStatus(error.message || String(error), 'error'); return; }
-
-    // Sign-up with email confirmation returns no session yet.
-    const signedIn = data && data.session;
-    if (!signedIn) {
-      setStatus('Almost there — check your email to confirm your account, then sign in.', 'ok');
-      applyMode('login');
-      emailInput.value = email;
-      return;
-    }
-    setStatus('Success! Taking you to the app…', 'ok');
-    location.replace(NEXT);
-  } catch {
-    setStatus('Something went wrong. Please try again.', 'error');
-  } finally {
-    submitBtn.disabled = false;
-    if (mode === 'signup') submitBtn.textContent = step < TOTAL_STEPS ? 'Continue' : 'Create account';
+// Keyboard: Enter advances; letters/numbers pick a choice.
+document.addEventListener('keydown', (e) => {
+  if (mode !== 'signup' || signupFlow.hidden || submitting) return;
+  const q = slides[idx];
+  if (!q) return;
+  if (e.key === 'Enter') { e.preventDefault(); next(); return; }
+  if (q.type === 'choice') {
+    let i = -1;
+    if (/^[a-z]$/i.test(e.key)) i = e.key.toUpperCase().charCodeAt(0) - 65;
+    else if (/^[1-9]$/.test(e.key)) i = Number(e.key) - 1;
+    if (i >= 0 && i < q.options.length) { e.preventDefault(); selectChoice(q, q.options[i].value); }
   }
-}
+});
 
 // Initialise from the URL (?mode=signup) on load.
 applyMode(mode);
