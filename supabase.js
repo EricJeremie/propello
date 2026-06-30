@@ -58,10 +58,12 @@ export async function signIn(email, password) {
   catch (err) { return { error: { message: err.message || 'Sign-in failed.' } }; }
 }
 
-export async function signUp(email, password, fullName, industryProfile = null) {
+export async function signUp(email, password, fullName, industryProfile = null, extraMetadata = {}) {
   const sb = await getClient();
   if (!sb) return { error: { message: 'Accounts are offline right now — you can still generate proposals.' } };
   const metadata = { full_name: fullName || '' };
+  // KYC / business details (company, role, phone, country, size, …).
+  if (extraMetadata && typeof extraMetadata === 'object') Object.assign(metadata, extraMetadata);
   if (industryProfile) metadata.industry_profile = industryProfile;
   try { return await sb.auth.signUp({ email, password, options: { data: metadata } }); }
   catch (err) { return { error: { message: err.message || 'Sign-up failed.' } }; }

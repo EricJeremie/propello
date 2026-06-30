@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="marketing.css?v=2" />
-  <link rel="stylesheet" href="auth.css?v=1" />
+  <link rel="stylesheet" href="auth.css?v=2" />
 </head>
 <body class="marketing-page page-auth">
   <main class="auth-shell">
@@ -59,30 +59,109 @@
           <button type="button" class="auth-tab" id="tabSignup" role="tab" aria-selected="false" data-mode="signup">Sign up</button>
         </div>
 
+        <!-- Sign-up progress (hidden during login) -->
+        <div class="auth-steps" id="authSteps" hidden>
+          <div class="auth-steps__track"><span class="auth-steps__fill" id="authStepsFill"></span></div>
+          <span class="auth-steps__label" id="authStepsLabel">Step 1 of 4 · Account</span>
+        </div>
+
         <form class="auth-form" id="authForm" novalidate>
-          <div class="auth-field" id="nameField" hidden>
-            <label for="authName">Full name</label>
-            <input type="text" id="authName" name="name" autocomplete="name" placeholder="Jane Santos" />
-          </div>
-
-          <div class="auth-field">
-            <label for="authEmail">Email</label>
-            <input type="email" id="authEmail" name="email" autocomplete="email" placeholder="you@company.com" required />
-          </div>
-
-          <div class="auth-field">
-            <label for="authPassword">Password</label>
-            <div class="auth-input-wrap">
-              <input type="password" id="authPassword" name="password" autocomplete="current-password" class="has-toggle" placeholder="••••••••" required minlength="6" />
-              <button type="button" class="auth-eye" id="togglePassword" aria-label="Show password" aria-pressed="false">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
-                </svg>
-              </button>
+          <!-- Step 1 — Account -->
+          <div class="auth-step" data-step="1">
+            <div class="auth-field" id="nameField" hidden>
+              <label for="authName">Full name</label>
+              <input type="text" id="authName" name="name" autocomplete="name" placeholder="Jane Santos" />
+            </div>
+            <div class="auth-field">
+              <label for="authEmail">Email</label>
+              <input type="email" id="authEmail" name="email" autocomplete="email" placeholder="you@company.com" required />
+            </div>
+            <div class="auth-field">
+              <label for="authPassword">Password</label>
+              <div class="auth-input-wrap">
+                <input type="password" id="authPassword" name="password" autocomplete="current-password" class="has-toggle" placeholder="••••••••" required minlength="6" />
+                <button type="button" class="auth-eye" id="togglePassword" aria-label="Show password" aria-pressed="false">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
-          <button type="submit" class="btn btn--primary auth-submit" id="authSubmit">Login</button>
+          <!-- Step 2 — Business details (KYC) -->
+          <div class="auth-step" data-step="2" hidden>
+            <div class="auth-field">
+              <label for="kycCompany">Company / business name</label>
+              <input type="text" id="kycCompany" autocomplete="organization" placeholder="Northlight Studio" />
+            </div>
+            <div class="auth-field">
+              <label for="kycRole">Your role</label>
+              <input type="text" id="kycRole" autocomplete="organization-title" placeholder="Founder, Account Manager, …" />
+            </div>
+            <div class="auth-field">
+              <label for="kycPhone">Phone number</label>
+              <input type="tel" id="kycPhone" autocomplete="tel" placeholder="+63 917 000 0000" />
+            </div>
+            <div class="auth-row">
+              <div class="auth-field">
+                <label for="kycCountry">Country</label>
+                <select id="kycCountry" class="auth-select" required>
+                  <option value="" disabled selected>Select country</option>
+                  <option value="Philippines">Philippines</option>
+                  <option value="United States">United States</option>
+                  <option value="Canada">Canada</option>
+                  <option value="United Kingdom">United Kingdom</option>
+                  <option value="Australia">Australia</option>
+                  <option value="Singapore">Singapore</option>
+                  <option value="Malaysia">Malaysia</option>
+                  <option value="Indonesia">Indonesia</option>
+                  <option value="Thailand">Thailand</option>
+                  <option value="Vietnam">Vietnam</option>
+                  <option value="India">India</option>
+                  <option value="United Arab Emirates">United Arab Emirates</option>
+                  <option value="Japan">Japan</option>
+                  <option value="Hong Kong">Hong Kong</option>
+                  <option value="New Zealand">New Zealand</option>
+                  <option value="Germany">Germany</option>
+                  <option value="Netherlands">Netherlands</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="auth-field">
+                <label for="kycSize">Company size</label>
+                <select id="kycSize" class="auth-select" required>
+                  <option value="" disabled selected>Select size</option>
+                  <option value="Just me">Just me</option>
+                  <option value="2–10">2–10</option>
+                  <option value="11–50">11–50</option>
+                  <option value="51–200">51–200</option>
+                  <option value="201–500">201–500</option>
+                  <option value="500+">500+</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 — Industry -->
+          <div class="auth-step" data-step="3" hidden>
+            <div class="auth-field">
+              <label for="kycIndustry">Which industry are you in?</label>
+              <select id="kycIndustry" class="auth-select" required></select>
+            </div>
+            <p class="auth-hint">We'll tailor proposal language, scope, deliverables, and pricing to your field.</p>
+          </div>
+
+          <!-- Step 4 — Industry tailoring questions (rendered by JS) -->
+          <div class="auth-step" data-step="4" hidden>
+            <p class="auth-hint auth-hint--lead">A few quick questions so your proposals fit your industry.</p>
+            <div id="industryQuestions" class="auth-questions"></div>
+          </div>
+
+          <div class="auth-actions">
+            <button type="button" class="btn btn--glass auth-back" id="authBack" hidden>Back</button>
+            <button type="submit" class="btn btn--primary auth-submit" id="authSubmit">Login</button>
+          </div>
 
           <p class="auth-status" id="authStatus" role="alert" hidden></p>
         </form>
@@ -96,6 +175,6 @@
   </main>
 
   <script src="marketing.js?v=2"></script>
-  <script type="module" src="auth.js?v=1"></script>
+  <script type="module" src="auth.js?v=2"></script>
 </body>
 </html>
