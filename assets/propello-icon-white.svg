@@ -1,12 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Propello icon">
-  <!-- Circle -->
-  <circle cx="24" cy="24" r="24" fill="#1A56B0"/>
+  <!-- Circle outline on dark -->
+  <circle cx="24" cy="24" r="24" fill="white" fill-opacity="0.15"/>
+  <circle cx="24" cy="24" r="22.5" fill="none" stroke="white" stroke-width="1.5"/>
   <!-- Document body -->
   <rect x="12.5" y="13" width="15" height="19" rx="2.5" fill="white"/>
-  <!-- Document lines -->
+  <!-- Document lines (use navy so they're visible on white doc) -->
   <rect x="15.5" y="17.5" width="9" height="1.8" rx="0.9" fill="#1A56B0"/>
   <rect x="15.5" y="21.2" width="7" height="1.8" rx="0.9" fill="#1A56B0"/>
   <rect x="15.5" y="24.9" width="8" height="1.8" rx="0.9" fill="#1A56B0"/>
-  <!-- Arrow -->
-  <polygon points="28.5,14.5 36,7.5 36,12 42,12 42,18.5 36,18.5 36,23" fill="#60A5FA"/>
+  <!-- Arrow light -->
+  <polygon points="28.5,14.5 36,7.5 36,12 42,12 42,18.5 36,18.5 36,23" fill="#93C5FD"/>
 </svg>
