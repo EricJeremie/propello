@@ -292,6 +292,11 @@ body.page-auth {
   margin-top: 0.3rem;
 }
 
+/* Size the row by flex, not the mobile `.btn { width:100% }` rule from
+   marketing.css — otherwise Back claims the full width and pushes the
+   submit button off-screen on narrow viewports. */
+.auth-actions .btn { width: auto; }
+
 .auth-back {
   flex: 0 0 auto;
   min-width: 5.5rem;
