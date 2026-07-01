@@ -160,8 +160,35 @@ button, input, textarea, select { font-family: inherit; }
 }
 .internal-preview__title { font-size: 0.8125rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
 .internal-preview__text { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }
+.internal-preview__badge {
+  display: inline-block; margin-left: 0.35rem; padding: 0.05rem 0.4rem; border-radius: 999px;
+  background: var(--rausch-tint); color: var(--rausch); font-size: 0.65rem; font-weight: 700;
+  vertical-align: middle;
+}
 .internal-mini-form { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; align-items: start; }
 .internal-mini-form--stack { grid-template-columns: 1fr; }
+.internal-upload-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; margin-top: 0.5rem; }
+.internal-upload-btn svg { flex: none; }
+
+/* ---- Template upload modal (shared: generator + dashboard) ---- */
+.tmpl-modal { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 1.25rem; }
+.tmpl-modal__backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px); }
+.tmpl-modal__card {
+  position: relative; z-index: 1; width: min(30rem, 100%); max-height: calc(100vh - 2.5rem);
+  overflow-y: auto; padding: 1.6rem 1.5rem 1.4rem;
+}
+.tmpl-modal__close {
+  position: absolute; top: 0.75rem; right: 0.85rem; width: 2rem; height: 2rem; border-radius: 8px;
+  font-size: 1.4rem; line-height: 1; color: var(--text-muted); background: none; border: none; cursor: pointer;
+}
+.tmpl-modal__close:hover { background: var(--bg-subtle); color: var(--text); }
+.tmpl-modal__title { font-size: 1.15rem; font-weight: 800; color: #0f172a; letter-spacing: -0.01em; }
+.tmpl-modal__sub { margin: 0.35rem 0 1.1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+.tmpl-drop { margin-top: 0.9rem; }
+.tmpl-drop.is-drag { border-color: var(--rausch); background: var(--rausch-tint); }
+.tmpl-drop.is-filled { border-style: solid; border-color: #BFDBFE; }
+.tmpl-modal__status { margin-top: 0.85rem; }
+.tmpl-modal__actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1.2rem; }
 
 .industry-onboarding .card__hint {
   margin: 0.45rem 0 0.6rem;
@@ -840,6 +867,23 @@ button, input, textarea, select { font-family: inherit; }
 .tmpl-card__cta {
   margin-top: 0.4rem; font-size: 0.8125rem; font-weight: 700; color: var(--rausch);
 }
+/* Upload card + user-owned uploaded templates */
+.tmpl-card--upload {
+  border-style: dashed; border-color: #c7d2e4; align-items: center; text-align: center; justify-content: center;
+}
+.tmpl-card--upload:hover { border-color: var(--rausch); }
+.tmpl-card--upload .tmpl-card__icon { background: var(--rausch-tint); color: var(--rausch); }
+.tmpl-card--upload .tmpl-card__summary { max-width: 22ch; margin-inline: auto; }
+.tmpl-card--owned { position: relative; }
+.tmpl-card__badge {
+  display: inline-block; margin-left: 0.3rem; padding: 0.05rem 0.4rem; border-radius: 999px;
+  background: var(--rausch-tint); color: var(--rausch); font-size: 0.6rem; font-weight: 700; vertical-align: middle;
+}
+.tmpl-card__delete {
+  position: absolute; top: 0.5rem; right: 0.5rem; width: 1.6rem; height: 1.6rem; border: none; background: none;
+  color: var(--text-muted); font-size: 1.15rem; line-height: 1; cursor: pointer; border-radius: 6px; z-index: 1;
+}
+.tmpl-card__delete:hover { background: var(--bg-subtle); color: #dc2626; }
 @media (max-width: 640px) {
   .dash-hero { flex-direction: column; align-items: stretch; }
   .tmpl-grid { grid-template-columns: 1fr; }

@@ -5,7 +5,8 @@
    ============================================================ */
 'use strict';
 
-import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=28';
+import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, fetchUserTemplates, TEMPLATE_BUCKET, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=30';
+import { openTemplateUpload } from './template-upload.js?v=1';
 import { initLayout } from './nav.js?v=30';
 import { createQuickSearch } from './quick-search.js';
 import {
@@ -159,6 +160,8 @@ const paras = (s) => String(s || '').split(/\n{2,}/).map((p) => p.trim()).filter
 /* ---------- State ---------- */
 let pdfFile = null;
 let pdfName = null;
+// Company templates the user uploaded (Supabase); merged into the picker.
+let userTemplates = [];
 const LS_INTERNAL_TEMPLATES = 'pdv_internal_templates';
 const LS_INTERNAL_BLOCKS = 'pdv_internal_blocks';
 const LS_INDUSTRY_DEFAULTS = 'pdv_industry_defaults_applied';
@@ -472,8 +475,38 @@ function uid(prefix) {
   return `${prefix}-${id}`;
 }
 
+function uploadedTemplates() {
+  return userTemplates.map((t) => ({
+    id: t.id,
+    name: t.name || t.file_name || 'Company template',
+    kind: 'upload',
+    summary: 'Your uploaded company template — Propello matches its structure and tone.',
+    mime_type: t.mime_type,
+    file_path: t.file_path,
+    extracted_text: t.extracted_text || '',
+  }));
+}
+
 function allTemplates() {
-  return [...TEMPLATE_LIBRARY, ...getIndustryTemplates(), ...readJsonList(LS_INTERNAL_TEMPLATES)];
+  return [...uploadedTemplates(), ...TEMPLATE_LIBRARY, ...getIndustryTemplates(), ...readJsonList(LS_INTERNAL_TEMPLATES)];
+}
+
+async function refreshUserTemplates() {
+  try { userTemplates = await fetchUserTemplates(); }
+  catch { userTemplates = []; }
+  renderTemplateOptions();
+}
+
+// Apply a template chosen via ?template=<id> once it exists in the picker.
+function applyTemplateParam() {
+  const id = new URLSearchParams(window.location.search).get('template');
+  if (!id) return;
+  const select = $('templateSelect');
+  if (!select || select.value === id) return;
+  if (!allTemplates().some((t) => t.id === id)) return;
+  select.value = id;
+  renderTemplatePreview();
+  applyTemplate();
 }
 
 function allContentBlocks() {
@@ -779,7 +812,7 @@ function renderTemplatePreview() {
   if (!preview) return;
   const template = templateById($('templateSelect')?.value);
   preview.innerHTML = template ? `
-    <div class="internal-preview__title">${esc(template.name)}</div>
+    <div class="internal-preview__title">${esc(template.name)}${template.kind === 'upload' ? ' <span class="internal-preview__badge">Your template</span>' : ''}</div>
     <div class="internal-preview__text">${esc(template.summary || '')}</div>
   ` : `
     <div class="internal-preview__title">No template selected</div>
@@ -796,6 +829,18 @@ function appendInstruction(text) {
 function applyTemplate() {
   const template = templateById($('templateSelect')?.value);
   if (!template) { showToast('Choose a template first.', 'error'); return; }
+  // Uploaded company templates carry no structured fields — the actual file is
+  // matched at generation time. Just record the choice and confirm.
+  if (template.kind === 'upload') {
+    const content = activeProposalContent();
+    if (content) {
+      ensureInternal(content).template = { id: template.id, name: template.name, kind: 'upload' };
+      markWorkflowDirty();
+      hydrateInternalUi();
+    }
+    showToast(`Propello will follow "${template.name}" when you generate.`);
+    return;
+  }
   $('f_proposalName').value = template.proposalName || template.name || $('f_proposalName').value;
   appendInstruction(template.notes || '');
   renderScopeItems(template.scopeItems || []);
@@ -1302,6 +1347,18 @@ async function generate() {
     messages: [{ role: 'user', content }],
     output_config: { format: { type: 'json_schema', schema: PROPOSAL_SCHEMA }, effort: 'high' },
   };
+
+  // If an uploaded company template is selected, have the AI match its format.
+  // PDFs are read inline server-side; .docx arrives as already-extracted text.
+  const chosenTemplate = templateById($('templateSelect')?.value);
+  if (chosenTemplate && chosenTemplate.kind === 'upload') {
+    const isPdf = chosenTemplate.mime_type === 'application/pdf' || /\.pdf$/i.test(chosenTemplate.file_path || '');
+    if (isPdf) {
+      body.template_document = { bucket: TEMPLATE_BUCKET, path: chosenTemplate.file_path, name: chosenTemplate.name };
+    } else if (chosenTemplate.extracted_text) {
+      body.template_text = chosenTemplate.extracted_text;
+    }
+  }
 
   let uploadedBriefPath = null;
   let storageClient = null;
@@ -2747,6 +2804,8 @@ async function updateAuthState() {
       applyIndustryDefaultsForSession(session);
       renderIndustrySetupNotice(session);
       refreshHistory();
+      // Load the user's uploaded templates, then honor any ?template= deep-link.
+      refreshUserTemplates().then(applyTemplateParam);
 
       // Auto-open a document when navigated from dashboard (?open=ID)
       const openId = new URLSearchParams(window.location.search).get('open');
@@ -3183,6 +3242,16 @@ function initInternalToolkit() {
   $('templateSelect').addEventListener('change', renderTemplatePreview);
   $('applyTemplateBtn').addEventListener('click', applyTemplate);
   $('saveTemplateBtn').addEventListener('click', saveCustomTemplate);
+  $('uploadTemplateBtn')?.addEventListener('click', () => openTemplateUpload({
+    onSaved: async () => {
+      await refreshUserTemplates();
+      if (userTemplates[0]) {
+        $('templateSelect').value = userTemplates[0].id;
+        renderTemplatePreview();
+      }
+      showToast('Template uploaded.');
+    },
+  }));
 
   $('blockCategorySelect').addEventListener('change', renderContentBlockList);
   $('contentBlockList').addEventListener('click', (e) => {
@@ -3309,13 +3378,9 @@ function init() {
     if (modeParam === 'invoice') setMode('invoice');
     else if (modeParam === 'proposal') setMode('proposal');
 
-    // Apply a sample template chosen from the dashboard (?template=<id>).
-    const templateParam = new URLSearchParams(window.location.search).get('template');
-    if (templateParam && allTemplates().some((t) => t.id === templateParam)) {
-      $('templateSelect').value = templateParam;
-      renderTemplatePreview();
-      applyTemplate();
-    }
+    // Apply a template chosen from the dashboard (?template=<id>). Built-in and
+    // industry templates resolve now; uploaded ones after refreshUserTemplates.
+    applyTemplateParam();
 
     const activeMode = modeParam === 'invoice' ? 'invoice' : 'proposal';
     initLayout({

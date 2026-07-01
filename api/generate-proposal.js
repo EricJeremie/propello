@@ -2,7 +2,37 @@ const { verifySupabaseSession } = require('../lib/supabase');
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const BRIEF_BUCKET = 'proposal-briefs';
+const TEMPLATE_BUCKET = 'proposal-templates';
 const MAX_BRIEF_BYTES = 12 * 1024 * 1024;
+const MAX_TEMPLATE_TEXT = 20000;
+
+// Download an owner-scoped PDF from a private bucket and return it base64.
+// Returns { base64 } or { error, status }. Path must be `<uid>/<uuid>.pdf`.
+async function fetchOwnedPdf({ bucket, path, userId, token }) {
+  const validPath = typeof path === 'string'
+    && path.startsWith(`${userId}/`)
+    && /^[0-9a-f-]{36}\/[A-Za-z0-9._-]+\.pdf$/i.test(path);
+  if (!validPath) return { error: 'Invalid document reference.', status: 400 };
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  let docRes;
+  try {
+    docRes = await fetch(
+      `${process.env.SUPABASE_URL || 'https://xiykfvyjavkkmfqujcql.supabase.co'}/storage/v1/object/authenticated/${bucket}/${encodedPath}`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY || 'sb_publishable_CoqmS7OUcHBQ55Ho22xgyg_RYYtUoLk',
+          authorization: `Bearer ${token}`,
+        },
+      },
+    );
+  } catch {
+    return { error: 'Document storage is temporarily unavailable. Please try again.', status: 502 };
+  }
+  if (!docRes.ok) return { error: 'Could not read the uploaded document. Please upload it again.', status: 400 };
+  const bytes = Buffer.from(await docRes.arrayBuffer());
+  if (bytes.length > MAX_BRIEF_BYTES) return { error: 'The document must be 12 MB or smaller.', status: 413 };
+  return { base64: bytes.toString('base64') };
+}
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -131,6 +161,24 @@ async function handle(req, res) {
     storedDocument = bytes.toString('base64');
   }
 
+  // Optional company template the draft should imitate. PDFs are read inline;
+  // .docx arrives already text-extracted (Gemini can't read .docx directly).
+  let storedTemplate = null;
+  const templateDocument = body?.template_document;
+  if (templateDocument) {
+    if (templateDocument.bucket !== TEMPLATE_BUCKET) {
+      return sendJson(res, { error: { message: 'Invalid template reference.' } }, 400);
+    }
+    const result = await fetchOwnedPdf({
+      bucket: TEMPLATE_BUCKET, path: templateDocument.path, userId: sessionCheck.user.id, token,
+    });
+    if (result.error) return sendJson(res, { error: { message: result.error } }, result.status);
+    storedTemplate = result.base64;
+  }
+  const templateText = typeof body?.template_text === 'string'
+    ? body.template_text.slice(0, MAX_TEMPLATE_TEXT).trim()
+    : '';
+
   const messages = Array.isArray(body?.messages) ? body.messages : [];
   const contents = messages.map((message) => ({
     role: message.role === 'assistant' ? 'model' : 'user',
@@ -144,6 +192,23 @@ async function handle(req, res) {
     firstUserMessage.parts.unshift({
       inline_data: { mime_type: 'application/pdf', data: storedDocument },
     });
+  }
+  if (storedTemplate || templateText) {
+    const firstUserMessage = contents.find((message) => message.role === 'user');
+    if (!firstUserMessage) {
+      return sendJson(res, { error: { message: 'A user message is required.' } }, 400);
+    }
+    if (storedTemplate) {
+      firstUserMessage.parts.unshift({
+        inline_data: { mime_type: 'application/pdf', data: storedTemplate },
+      });
+    }
+    const note = "The enclosed TEMPLATE is the user's own company proposal. Imitate its "
+      + 'section structure, ordering, headings, wording style, tone, and the way it frames '
+      + 'scope and pricing. Use the confirmed details (and any separate source brief) for the '
+      + 'actual content, not the template. Still return the required structured JSON.'
+      + (templateText ? '\n\nTEMPLATE (text):\n' + templateText : '');
+    firstUserMessage.parts.unshift({ text: note });
   }
 
   const generationConfig = {

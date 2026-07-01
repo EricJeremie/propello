@@ -259,6 +259,87 @@ export async function fetchSubmissionById(id) {
   }
 }
 
+/* ---------- Company proposal templates (user uploads) ---------- */
+export const TEMPLATE_BUCKET = 'proposal-templates';
+
+export async function fetchUserTemplates() {
+  const sb = await getClient();
+  if (!sb) return [];
+  const session = await getSession();
+  if (!session) return [];
+  try {
+    const { data, error } = await sb
+      .from('user_templates')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+    if (error) { console.warn('Error fetching templates:', error.message); return []; }
+    return data || [];
+  } catch (err) {
+    console.warn('Fetch templates exception:', err && err.message);
+    return [];
+  }
+}
+
+/* Upload a template file to storage, then record a metadata row so it shows up
+   in the picker. extractedText is only used for .docx (the model reads PDFs). */
+export async function saveUserTemplate({ name, file, mimeType, extractedText } = {}) {
+  const sb = await getClient();
+  if (!sb) return { error: { message: 'Offline — cannot upload right now.' } };
+  const session = await getSession();
+  if (!session) return { error: { message: 'Sign in to upload a template.' } };
+  try {
+    const ext = /\.docx$/i.test(file.name || '') ? 'docx' : 'pdf';
+    const uuid = (crypto.randomUUID && crypto.randomUUID()) || String(Date.now());
+    const path = `${session.user.id}/${uuid}.${ext}`;
+    const { error: uploadError } = await sb.storage
+      .from(TEMPLATE_BUCKET)
+      .upload(path, file, { contentType: mimeType || file.type, upsert: false });
+    if (uploadError) return { error: { message: uploadError.message || 'Upload failed.' } };
+
+    const row = {
+      user_id: session.user.id,
+      name: name || file.name || 'Company template',
+      file_bucket: TEMPLATE_BUCKET,
+      file_path: path,
+      file_name: file.name || null,
+      mime_type: mimeType || file.type || null,
+      extracted_text: extractedText || null,
+    };
+    const { data, error } = await sb.from('user_templates').insert(row).select().single();
+    if (error) {
+      // Roll back the orphaned file so we don't leave dangling objects.
+      try { await sb.storage.from(TEMPLATE_BUCKET).remove([path]); } catch { /* ignore */ }
+      return { error: { message: error.message || 'Could not save template.' } };
+    }
+    return { data };
+  } catch (err) {
+    return { error: { message: err.message || 'Upload failed.' } };
+  }
+}
+
+export async function deleteUserTemplate(id) {
+  const sb = await getClient();
+  if (!sb) return { error: 'offline' };
+  const session = await getSession();
+  if (!session) return { error: 'not-authenticated' };
+  try {
+    // Look up the file path first so we can clean up storage too.
+    const { data: row } = await sb
+      .from('user_templates').select('file_path').eq('id', id).eq('user_id', session.user.id).single();
+    const { error } = await sb
+      .from('user_templates').delete().eq('id', id).eq('user_id', session.user.id);
+    if (error) return { error };
+    if (row && row.file_path) {
+      try { await sb.storage.from(TEMPLATE_BUCKET).remove([row.file_path]); } catch { /* ignore */ }
+    }
+    return { error: null };
+  } catch (err) {
+    console.error('Delete template failed:', err);
+    return { error: err.message };
+  }
+}
+
 /* Anonymous client submits a questionnaire to an owner via an invite link.
    Goes through the submit-questionnaire edge function (service role insert),
    so no client account is needed. Returns { ok } or { error }. */

@@ -5,7 +5,9 @@ import {
   getSession, signIn, signUp, signOut, onAuthChange,
   fetchUserProposals, fetchUserQuestionnaires,
   deleteProposal, deleteQuestionnaire,
-} from './supabase.js?v=28';
+  fetchUserTemplates, deleteUserTemplate,
+} from './supabase.js?v=30';
+import { openTemplateUpload } from './template-upload.js?v=1';
 import { createQuickSearch } from './quick-search.js';
 import {
   buildIndustryMetadata,
@@ -169,28 +171,64 @@ function renderGrid(items) {
   });
 }
 
-/* Sample templates — industry-tailored starting points (one click into the generator). */
-function renderTemplates() {
+const DOC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+
+/* Templates: an upload card, the user's uploaded company templates, then the
+   industry-tailored starting points. One click deep-links into the generator. */
+async function renderTemplates() {
   const grid = $('templateGrid');
   if (!grid) return;
-  const templates = getIndustryTemplates();
-  grid.innerHTML = templates.map((t) => {
+
+  const uploads = await fetchUserTemplates().catch(() => []);
+
+  const uploadCard = `
+    <button type="button" class="tmpl-card tmpl-card--upload" data-action="upload">
+      <span class="tmpl-card__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </span>
+      <span class="tmpl-card__name">Bring your company's template</span>
+      <span class="tmpl-card__summary">Upload an existing proposal (PDF or Word) and Propello will match its structure and tone.</span>
+      <span class="tmpl-card__cta">Upload &rarr;</span>
+    </button>`;
+
+  const uploadedCards = uploads.map((t) => `
+    <div class="tmpl-card tmpl-card--owned" data-template="${esc(t.id)}" role="button" tabindex="0">
+      <button type="button" class="tmpl-card__delete" data-delete="${esc(t.id)}" title="Delete template" aria-label="Delete template">&times;</button>
+      <span class="tmpl-card__icon">${DOC_ICON}</span>
+      <span class="tmpl-card__name">${esc(t.name)} <span class="tmpl-card__badge">Your template</span></span>
+      <span class="tmpl-card__summary">Propello will follow this template's structure and tone.</span>
+      <span class="tmpl-card__cta">Use template &rarr;</span>
+    </div>`).join('');
+
+  const industryCards = getIndustryTemplates().map((t) => {
     const items = (t.scopeItems || []).slice(0, 3).map((s) => `<li>${esc(s)}</li>`).join('');
     return `
       <button type="button" class="tmpl-card" data-template="${esc(t.id)}">
-        <span class="tmpl-card__icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        </span>
+        <span class="tmpl-card__icon">${DOC_ICON}</span>
         <span class="tmpl-card__name">${esc(t.name)}</span>
         <span class="tmpl-card__summary">${esc(t.summary || '')}</span>
         <ul class="tmpl-card__items">${items}</ul>
         <span class="tmpl-card__cta">Use template &rarr;</span>
-      </button>
-    `;
+      </button>`;
   }).join('');
-  grid.querySelectorAll('.tmpl-card').forEach((el) => {
-    el.addEventListener('click', () => {
-      window.location.href = `index.html?template=${encodeURIComponent(el.dataset.template)}`;
+
+  grid.innerHTML = uploadCard + uploadedCards + industryCards;
+
+  grid.querySelector('[data-action="upload"]')?.addEventListener('click', () => {
+    openTemplateUpload({ onSaved: () => renderTemplates() });
+  });
+  grid.querySelectorAll('.tmpl-card[data-template]').forEach((el) => {
+    const go = () => { window.location.href = `index.html?template=${encodeURIComponent(el.dataset.template)}`; };
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  grid.querySelectorAll('[data-delete]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm('Delete this uploaded template? This cannot be undone.')) return;
+      const { error } = await deleteUserTemplate(btn.dataset.delete);
+      if (error) { alert('Could not delete: ' + (error.message || error)); return; }
+      renderTemplates();
     });
   });
 }

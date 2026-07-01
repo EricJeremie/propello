@@ -45,6 +45,7 @@ const BASE = [
   { id: 'country', type: 'select', label: 'Where are you based?', placeholder: 'Select your country', options: COUNTRIES.map((c) => ({ value: c, label: c })), required: true, emptyMsg: 'Please select your country.' },
   { id: 'size', type: 'choice', label: 'How big is your team?', options: SIZES.map((s) => ({ value: s, label: s })), required: true, emptyMsg: 'Please choose a team size.' },
   { id: 'industry', type: 'choice', label: 'Which industry are you in?', hint: "We'll tailor proposal language, scope, and pricing to your field.", options: INDUSTRY_PROFILES.map((p) => ({ value: p.id, label: p.name })), required: true, isIndustry: true, emptyMsg: 'Please choose your industry.' },
+  { id: 'hasTemplate', type: 'choice', label: 'Do you already have a proposal template?', hint: 'You can upload your company template after signing in and Propello will match its structure and tone.', options: [{ value: 'yes', label: "Yes — I'll upload it after signing in" }, { value: 'no', label: 'No — tailor proposals to my industry' }], required: true, emptyMsg: 'Please choose one.' },
 ];
 
 /* ---------- Icons ---------- */
@@ -270,6 +271,7 @@ async function submit() {
     phone: answers.phone || '',
     country: answers.country || '',
     company_size: answers.size || '',
+    wants_template_upload: answers.hasTemplate === 'yes',
   };
 
   renderMessage('Creating your account…', 'Just a moment.');
