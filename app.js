@@ -1602,6 +1602,7 @@ function render(d) {
   art.setAttribute('contenteditable', 'true');
   art.setAttribute('spellcheck', 'false');
   $('downloadBtn').disabled = false;
+  { const fb = $('findBtn'); if (fb) fb.hidden = false; }
   $('editorToolbar').hidden = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1725,6 +1726,7 @@ function renderInvoice(d) {
   art.setAttribute('contenteditable', 'true');
   art.setAttribute('spellcheck', 'false');
   $('downloadBtn').disabled = false;
+  { const fb = $('findBtn'); if (fb) fb.hidden = false; }
   $('editorToolbar').hidden = false;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -3050,6 +3052,129 @@ function filterDashboard(query) {
   renderDashboardGrid(filtered);
 }
 
+/* ---------- Find in proposal (in-document word search) ----------
+   Highlights matches with the CSS Custom Highlight API so the live
+   #proposal DOM is never mutated — safe for contenteditable + saving,
+   and it never bleeds into the exported PDF. */
+function initFindInProposal() {
+  const supported = typeof CSS !== 'undefined' && CSS.highlights && typeof Highlight === 'function';
+
+  const bar = document.createElement('div');
+  bar.id = 'findBar';
+  bar.className = 'find-bar no-print';
+  bar.hidden = true;
+  bar.setAttribute('role', 'search');
+  bar.innerHTML = `
+    <svg class="find-bar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="findInput" class="find-bar__input" type="text" placeholder="Find in proposal" aria-label="Find in proposal" autocomplete="off" spellcheck="false" />
+    <span id="findCount" class="find-bar__count" aria-live="polite"></span>
+    <button type="button" id="findPrev" class="find-bar__btn" title="Previous (Shift+Enter)" aria-label="Previous match"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>
+    <button type="button" id="findNext" class="find-bar__btn" title="Next (Enter)" aria-label="Next match"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+    <button type="button" id="findClose" class="find-bar__btn find-bar__close" title="Close (Esc)" aria-label="Close find"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+  document.body.appendChild(bar);
+
+  const input = bar.querySelector('#findInput');
+  const countEl = bar.querySelector('#findCount');
+  let ranges = [];
+  let active = -1;
+
+  function clearHighlights() {
+    if (supported) { CSS.highlights.delete('find'); CSS.highlights.delete('find-current'); }
+    ranges = [];
+    active = -1;
+  }
+  function collect(query) {
+    ranges = [];
+    const root = $('proposal');
+    if (!root || !query) return;
+    const q = query.toLowerCase();
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.nodeValue && n.nodeValue.trim()) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT,
+    });
+    let node;
+    while ((node = walker.nextNode())) {
+      const text = node.nodeValue.toLowerCase();
+      let i = text.indexOf(q);
+      while (i !== -1) {
+        const r = document.createRange();
+        r.setStart(node, i);
+        r.setEnd(node, i + q.length);
+        ranges.push(r);
+        i = text.indexOf(q, i + q.length);
+      }
+    }
+  }
+  function paint() {
+    if (!supported) {
+      const r = ranges[active];
+      if (r) { const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+      return;
+    }
+    CSS.highlights.set('find', new Highlight(...ranges));
+    const cur = new Highlight(...(ranges[active] ? [ranges[active]] : []));
+    cur.priority = 1;
+    CSS.highlights.set('find-current', cur);
+  }
+  function updateCount() {
+    countEl.textContent = ranges.length ? `${active + 1}/${ranges.length}` : (input.value ? '0/0' : '');
+    countEl.classList.toggle('find-bar__count--none', !!input.value && !ranges.length);
+  }
+  function scrollActive() {
+    const r = ranges[active];
+    if (!r) return;
+    const el = r.startContainer.parentElement || r.startContainer;
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  function run(query) {
+    clearHighlights();
+    collect(query);
+    active = ranges.length ? 0 : -1;
+    paint();
+    updateCount();
+    if (active >= 0) scrollActive();
+  }
+  function step(dir) {
+    if (!ranges.length) return;
+    active = (active + dir + ranges.length) % ranges.length;
+    paint();
+    updateCount();
+    scrollActive();
+  }
+  function open() {
+    bar.hidden = false;
+    const sel = (window.getSelection && String(window.getSelection())) || '';
+    const trimmed = sel.trim();
+    if (trimmed && trimmed.length <= 80 && !bar.contains(document.activeElement)) input.value = trimmed;
+    input.focus();
+    input.select();
+    if (input.value) run(input.value); else updateCount();
+  }
+  function close() {
+    clearHighlights();
+    bar.hidden = true;
+  }
+
+  input.addEventListener('input', () => run(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  bar.querySelector('#findNext').addEventListener('click', () => { step(1); input.focus(); });
+  bar.querySelector('#findPrev').addEventListener('click', () => { step(-1); input.focus(); });
+  bar.querySelector('#findClose').addEventListener('click', close);
+
+  const hasDoc = () => !$('downloadBtn').disabled;
+  const findBtn = $('findBtn');
+  if (findBtn) findBtn.addEventListener('click', () => { if (hasDoc()) open(); });
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+      if (!hasDoc()) return; // no document yet — leave the browser's native find alone
+      e.preventDefault();
+      open();
+    }
+  });
+}
+
 /* ---------- PDF Generation ---------- */
 // html2canvas rasterizes the ENTIRE document into a single canvas before
 // jsPDF slices it into pages. Browsers cap canvas size — Chrome at ~16384px
@@ -3405,6 +3530,8 @@ function init() {
       getItems: getQuickSearchItems,
       onSelect: openQuickSearchResult,
     });
+
+    initFindInProposal();
 
     // Settings modal wiring
     $('closeSettings').addEventListener('click', hideSettingsModal);

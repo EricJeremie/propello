@@ -713,6 +713,42 @@ button, input, textarea, select { font-family: inherit; }
   font-family: 'Inter', sans-serif; font-size: 11pt; line-height: 1.4;
 }
 
+/* ---- Find in proposal (in-document search) ---- */
+.find-bar {
+  position: fixed; top: calc(var(--appbar-h) + 0.6rem); right: 1rem; z-index: 90;
+  display: flex; align-items: center; gap: 0.1rem;
+  padding: 0.3rem 0.35rem 0.3rem 0.6rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 10px; box-shadow: var(--shadow);
+}
+.find-bar[hidden] { display: none; }
+.find-bar__icon { flex: none; width: 15px; height: 15px; color: var(--text-muted); }
+.find-bar__input {
+  border: none; outline: none; background: transparent; color: var(--text);
+  font: inherit; font-size: 0.875rem; width: 12rem; padding: 0.25rem 0.35rem;
+}
+.find-bar__input::placeholder { color: var(--text-muted); }
+.find-bar__count {
+  min-width: 2.6rem; text-align: right; padding-right: 0.2rem;
+  font-size: 0.75rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.find-bar__count--none { color: #dc2626; }
+.find-bar__btn {
+  flex: none; width: 1.65rem; height: 1.65rem; display: grid; place-items: center;
+  border-radius: 6px; color: var(--text-muted);
+}
+.find-bar__btn svg { width: 15px; height: 15px; }
+.find-bar__btn:hover { background: var(--bg-subtle); color: var(--text); }
+.find-bar__close { margin-left: 0.1rem; }
+
+::highlight(find) { background-color: #fde68a; color: #111827; }
+::highlight(find-current) { background-color: #fb923c; color: #111827; }
+
+@media (max-width: 640px) {
+  .find-bar { left: 0.5rem; right: 0.5rem; top: calc(var(--appbar-h) + 0.4rem); }
+  .find-bar__input { width: 100%; flex: 1; }
+}
+
 /* Applied only while exporting to PDF. html2pdf captures #proposal directly
    (the 20mm paper padding lives on the parent .paper-wrap, which isn't
    captured), so edge-aligned content — the right-aligned header, the top

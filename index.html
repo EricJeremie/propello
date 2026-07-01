@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=45" />
+  <link rel="stylesheet" href="styles.css?v=46" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -32,6 +32,10 @@
       <button id="quickSearchBtn" class="btn btn--ghost nav-link btn--quicksearch" type="button" aria-label="Quick search">
         <span>Quick Search</span>
         <span class="btn__kbd">⌘K</span>
+      </button>
+      <button id="findBtn" class="btn btn--ghost nav-link btn--quicksearch" type="button" aria-label="Find in proposal" hidden>
+        <span>Find</span>
+        <span class="btn__kbd">⌘F</span>
       </button>
       <div id="collabAvatars" class="collab-avatars" hidden aria-label="People editing"></div>
       <button id="authNavBtn" class="btn btn--ghost nav-link">Login</button>
@@ -568,6 +572,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=42"></script>
+  <script type="module" src="app.js?v=43"></script>
 </body>
 </html>
