@@ -3199,12 +3199,20 @@ function downloadPDF() {
     if (!ok) return;
   }
   const docNo = document.querySelector('.js-doc-no')?.innerText?.trim() || 'PD-PROPOSAL';
+  // Name the file (and set the PDF's title metadata) after the proposal name,
+  // falling back to the rendered title, then the doc number.
+  const docTitle = (content && content.meta && (content.meta.title || '').trim())
+    || (document.querySelector('.p-title')?.innerText || '').trim()
+    || docNo || 'Proposal';
+  const safeName = String(docTitle)
+    .replace(/[\/\\:*?"<>|\x00-\x1f]+/g, ' ') // strip characters invalid in filenames
+    .replace(/\s+/g, ' ').trim().slice(0, 120) || 'Proposal';
   // Add a safe gutter inside the captured element so edge-aligned content isn't
   // shaved off at the canvas boundary (see .proposal.pdf-exporting).
   element.classList.add('pdf-exporting');
   const opt = {
     margin: [15, 15],
-    filename: `${docNo}.pdf`,
+    filename: `${safeName}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: pdfScale(element), useCORS: true, letterRendering: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -3228,7 +3236,9 @@ function downloadPDF() {
   const restoreY = window.scrollY;
   window.scrollTo(0, 0);
   const cleanup = () => { element.classList.remove('pdf-exporting'); window.scrollTo(0, restoreY); };
-  html2pdf().set(opt).from(element).save()
+  html2pdf().set(opt).from(element).toPdf()
+    .get('pdf', (pdf) => { try { pdf.setProperties({ title: docTitle }); } catch { /* metadata is best-effort */ } })
+    .save()
     .then(() => { cleanup(); setStatus('ok', 'PDF downloaded successfully!'); })
     .catch(err => { cleanup(); setStatus('error', `PDF generation failed: ${err.message}`); });
 }
