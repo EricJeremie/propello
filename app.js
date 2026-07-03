@@ -1297,6 +1297,15 @@ async function generate() {
     return;
   }
 
+  // Give this generation its own saved record: pick a doc number that isn't
+  // already used by an existing proposal, so the immediate auto-save creates a
+  // new document instead of overwriting a previous same-day one.
+  try {
+    const taken = new Set((await fetchUserProposals()).map((p) => p.doc_number).filter(Boolean));
+    const uno = uniqueDocNo(intake.documentNumber, taken);
+    if (uno !== intake.documentNumber) { intake.documentNumber = uno; const f = $('f_docno'); if (f) f.value = uno; }
+  } catch { /* offline or signed out — the save is best-effort anyway */ }
+
   const btn = $('generateBtn');
   btn.disabled = true;
   setStatus('working', '<span class="spinner"></span> Reading the document and drafting all 10 sections… this can take 30–60s.');
@@ -1427,6 +1436,8 @@ async function generate() {
       proposal.meta.budget = intake.budget || '';
       proposal.meta.paymentDetails = intake.paymentDetails || '';
       if (intake.proposalName) proposal.meta.title = intake.proposalName;
+      // Use the reserved unique number so the saved record is distinct.
+      if (intake.documentNumber) proposal.meta.documentNumber = intake.documentNumber;
     }
     const internal = ensureInternal(proposal);
     internal.industryProfile = internalContext.industryProfile;
@@ -1440,17 +1451,21 @@ async function generate() {
     captureCurrentDocHtml();
     addVersionSnapshot('AI draft', 'Initial generated proposal.', { toast: false });
     hydrateInternalUi();
-    // Best-effort save to history (we're signed in; never blocks the result).
+    // Immediately save the generated proposal to the user's documents.
+    let savedOk = false;
     try {
       const { data, error: saveErr } = await saveProposal(proposal);
-      if (saveErr && saveErr !== 'not-authenticated' && saveErr !== 'offline') {
-        console.warn('Could not save proposal to history:', saveErr);
-      } else if (!saveErr) {
+      if (!saveErr) {
+        savedOk = true;
         setActiveDoc({ id: data && data[0] && data[0].id, content: proposal, token: null });
         refreshHistory();
+      } else if (saveErr !== 'not-authenticated' && saveErr !== 'offline') {
+        console.warn('Could not save proposal to history:', saveErr);
       }
     } catch (e) { /* history is optional — ignore */ }
-    setStatus('ok', `Proposal generated! Click any text to edit, then <b>Download PDF</b>.`);
+    setStatus('ok', savedOk
+      ? 'Proposal generated and saved to your documents. Click any text to edit, then <b>Download PDF</b>.'
+      : 'Proposal generated! Click any text to edit, then <b>Download PDF</b>.');
   } catch (err) {
     setStatus('error', `Generation failed: ${esc(err.message)}.`);
   } finally {
@@ -1758,20 +1773,31 @@ async function generateInvoice() {
     total,
   };
 
+  // Reserve a unique doc number so each generated invoice is its own record.
+  try {
+    const taken = new Set((await fetchUserProposals()).map((p) => p.doc_number).filter(Boolean));
+    const uno = uniqueDocNo(data.meta.documentNumber, taken);
+    if (uno !== data.meta.documentNumber) { data.meta.documentNumber = uno; const f = $('f_inv_no'); if (f) f.value = uno; }
+  } catch { /* offline or signed out — best-effort */ }
+
   renderInvoice(data);
   setActiveDoc({ id: null, content: data, token: null });
 
+  let savedOk = false;
   try {
     const { data: saved, error: saveErr } = await saveProposal(data);
-    if (saveErr && saveErr !== 'not-authenticated' && saveErr !== 'offline') {
-      console.warn('Could not save invoice to history:', saveErr);
-    } else if (!saveErr) {
+    if (!saveErr) {
+      savedOk = true;
       setActiveDoc({ id: saved && saved[0] && saved[0].id, content: data, token: null });
       refreshHistory();
+    } else if (saveErr !== 'not-authenticated' && saveErr !== 'offline') {
+      console.warn('Could not save invoice to history:', saveErr);
     }
   } catch (e) { /* history is optional — ignore */ }
 
-  setStatus('ok', `Invoice generated! Click any text to edit, then <b>Download PDF</b>.`);
+  setStatus('ok', savedOk
+    ? 'Invoice generated and saved to your documents. Click any text to edit, then <b>Download PDF</b>.'
+    : 'Invoice generated! Click any text to edit, then <b>Download PDF</b>.');
 }
 
 /* ---------- Rich text editor toolbar ---------- */
@@ -3252,6 +3278,16 @@ function freshDocNo() {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
   return `PD-${now.getFullYear()}-${mm}${dd}`;
+}
+// Return `base` if it isn't already used, otherwise append -02, -03, … so the
+// number is unique per user (documents are keyed by user_id + doc_number).
+function uniqueDocNo(base, taken) {
+  const root = String(base || freshDocNo()).trim() || freshDocNo();
+  if (!taken || !taken.has(root)) return root;
+  let n = 2;
+  let candidate = `${root}-${String(n).padStart(2, '0')}`;
+  while (taken.has(candidate)) { n += 1; candidate = `${root}-${String(n).padStart(2, '0')}`; }
+  return candidate;
 }
 function autofillMeta() {
   $('f_docno').value = freshDocNo();
