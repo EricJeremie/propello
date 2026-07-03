@@ -123,8 +123,9 @@
               <input type="date" id="f_date_picker" class="date-field__picker" tabindex="-1" aria-hidden="true" />
             </div>
           </div>
-          <div class="field field--full"><label class="label">Prepared by (signatory)</label><input id="f_signatory" class="input" value="Eric Jeremie Rotaquio" /></div>
-          <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" value="Chief Executive Officer, Propello" /></div>
+          <div class="field field--full"><label class="label">Your company (prepared by)</label><input id="f_myCompany" class="input" placeholder="e.g. PocketDevs" autocomplete="organization" /></div>
+          <div class="field field--full"><label class="label">Prepared by (signatory)</label><input id="f_signatory" class="input" placeholder="Your full name" autocomplete="name" /></div>
+          <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" placeholder="e.g. Chief Executive Officer" /></div>
         </div>
 
         <div class="field field--full">
@@ -459,6 +460,11 @@
             <label class="label">Full name</label>
             <input id="settingsName" type="text" class="input" placeholder="Your full name" autocomplete="name" />
           </div>
+          <div class="field">
+            <label class="label">Company</label>
+            <input id="settingsCompany" type="text" class="input" placeholder="Your company name" autocomplete="organization" />
+            <p class="card__hint">Shown as the “Prepared by” company on your proposals and invoices.</p>
+          </div>
           <div id="settingsProfileStatus" class="status" hidden></div>
           <button type="button" id="saveProfileBtn" class="btn btn--primary btn--block">Save profile</button>
           <hr class="rule" />
@@ -572,6 +578,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=45"></script>
+  <script type="module" src="app.js?v=46"></script>
 </body>
 </html>

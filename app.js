@@ -5,7 +5,7 @@
    ============================================================ */
 'use strict';
 
-import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, fetchUserTemplates, TEMPLATE_BUCKET, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=30';
+import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, fetchUserTemplates, TEMPLATE_BUCKET, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=31';
 import { openTemplateUpload } from './template-upload.js?v=1';
 import { initLayout } from './nav.js?v=30';
 import { createQuickSearch } from './quick-search.js';
@@ -36,7 +36,7 @@ const DEFAULT_LOGO = 'assets/logo.svg';
 const DEFAULT_PROPOSAL_COLOR = '#f2384a';
 
 const STYLE_EXEMPLAR = `
-Propello proposals read like this reference (AI-Assisted Development Training & Consultation for Elgada BPO):
+Strong proposals read like this reference (AI-Assisted Development Training & Consultation for Elgada BPO):
 - Tone: confident, precise, commercially clear; no fluff, no hype. Short declarative sentences.
 - Structure: a doc number + prepared date in the header, a clear "Prepared for" party, an objective-led
   opening, concrete scope steps with outcomes, a transparent cost basis, explicit commercial terms, then
@@ -44,10 +44,14 @@ Propello proposals read like this reference (AI-Assisted Development Training & 
 - Money is stated plainly (e.g. "Php 20,000 per facilitated hour"; totals exclusive of VAT and reimbursables).
 - Terms cover: confirmation & payment (e.g. 50% reservation), taxes & expenses (exclusive of VAT),
   rescheduling, scope control, IP / internal-use license, and validity.
-- Footer is always: Propello | Confidential | www.propello.app. Signatory defaults to the CEO.
+- Signatory is the preparing company's CEO or an authorized signatory.
 `;
 
-const SYSTEM_PROMPT = `You are the proposal writer for Propello (a Philippine professional services team).
+const SYSTEM_PROMPT = `You are an expert proposal writer. You draft each proposal ON BEHALF OF the user's own
+business — the "preparing company", whose name is given in the confirmed details as "preparingCompany". The
+proposal is issued BY that company TO its client. "Propello" is only the software tool used to create the
+document; it is NOT the service provider. NEVER call the preparing party "Propello" and never mention the word
+"Propello" anywhere in the output — always use the preparingCompany name (or "[TBD]" if none was provided).
 Given a client's source document (brief, notes, RFP, or scope) plus confirmed deal details, produce a
 complete, client-ready proposal as STRUCTURED JSON matching the provided schema. Cover all ten sections:
 Executive Summary, Solutions Outline, Objectives, Full Scope of Work, Project Timeline, Project Cost,
@@ -77,7 +81,7 @@ Rules:
   change requests, IP & internal-use license, warranty/support boundary, and validity of the quotation.
 - Use the selected industry context to choose terminology, deliverables, support language, exclusions, and
   pricing assumptions. If the industry is not technology/software, do not force software-development wording.
-- Write in Propello' house voice.
+- Write in the preparing company's professional house voice.
 
 ${STYLE_EXEMPLAR}
 
@@ -106,7 +110,7 @@ const PROPOSAL_SCHEMA = obj({
   preparedBy: obj({
     name: str('Signatory name'),
     title: str('Signatory title'),
-    company: str('Always "Propello"'),
+    company: str('The preparing company issuing this proposal — use the preparingCompany value from the confirmed details, never Propello.'),
   }),
   executiveSummary: str('2-4 paragraph executive summary. Use \\n\\n between paragraphs.'),
   solutionsOutline: obj({
@@ -214,7 +218,7 @@ const CONTENT_BLOCK_LIBRARY = [
     id: 'scope-control',
     category: 'Scope',
     title: 'Scope Control',
-    body: 'Any work outside the agreed scope will be assessed as a change request. Propello will provide an impact estimate for cost, timeline, and deliverables before proceeding.',
+    body: 'Any work outside the agreed scope will be assessed as a change request. We will provide an impact estimate for cost, timeline, and deliverables before proceeding.',
   },
   {
     id: 'client-responsibilities',
@@ -226,7 +230,7 @@ const CONTENT_BLOCK_LIBRARY = [
     id: 'case-study-internal-tools',
     category: 'Proof',
     title: 'Internal Tools Reference',
-    body: 'Propello has delivered internal tools that reduce manual coordination, consolidate operational records, and give management clearer visibility into work status and handoffs.',
+    body: 'Our team has delivered internal tools that reduce manual coordination, consolidate operational records, and give management clearer visibility into work status and handoffs.',
   },
   {
     id: 'support-boundary',
@@ -428,8 +432,9 @@ function collectIntake() {
     validUntil: $('f_valid').value.trim(),
     documentNumber: $('f_docno').value.trim(),
     preparedDate: $('f_date').value.trim(),
-    signatory: $('f_signatory').value.trim() || 'Eric Jeremie Rotaquio',
-    signatoryTitle: $('f_signatoryTitle').value.trim() || 'Chief Executive Officer, Propello',
+    myCompany: $('f_myCompany').value.trim(),
+    signatory: $('f_signatory').value.trim(),
+    signatoryTitle: $('f_signatoryTitle').value.trim(),
     notes: $('f_notes').value.trim(),
     budget: $('f_budget').value.trim(),
     paymentDetails: $('f_paymentDetails').value.trim(),
@@ -443,7 +448,7 @@ function collectInvoiceIntake() {
     client: $('f_inv_client').value.trim(),
     contact: $('f_inv_contact').value.trim(),
     clientTin: $('f_inv_clientTin').value.trim(),
-    company: $('f_inv_company').value.trim() || 'Propello',
+    company: $('f_inv_company').value.trim(),
     tin: $('f_inv_tin').value.trim(),
     invoiceNumber: $('f_inv_no').value.trim(),
     currency: $('f_inv_currency').value.trim() || 'PHP',
@@ -1306,6 +1311,17 @@ async function generate() {
     if (uno !== intake.documentNumber) { intake.documentNumber = uno; const f = $('f_docno'); if (f) f.value = uno; }
   } catch { /* offline or signed out — the save is best-effort anyway */ }
 
+  // "Prepared by" is always the logged-in user's own company — never the tool
+  // name. Take it from the form, falling back to the saved profile, and remember
+  // it on the profile so it prefills next time.
+  const authMeta = (session && session.user && session.user.user_metadata) || {};
+  const preparingCompany = (intake.myCompany || authMeta.company || '').trim();
+  if (!intake.signatory) intake.signatory = (authMeta.full_name || '').trim();
+  if (!intake.signatoryTitle) intake.signatoryTitle = preparingCompany ? `Chief Executive Officer, ${preparingCompany}` : '';
+  if (intake.myCompany && intake.myCompany !== authMeta.company) {
+    updateUserProfile({ company: intake.myCompany }).catch(() => { /* best-effort — save is non-blocking */ });
+  }
+
   const btn = $('generateBtn');
   btn.disabled = true;
   setStatus('working', '<span class="spinner"></span> Reading the document and drafting all 10 sections… this can take 30–60s.');
@@ -1318,10 +1334,14 @@ async function generate() {
   };
 
   const userText =
-    'Draft a Propello proposal' + (pdfFile ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
+    'Draft a professional proposal' + (pdfFile ? ' based on the attached source document and these confirmed details.' : ' from these confirmed details.') +
+    (preparingCompany
+      ? `\\nThe proposal is issued BY "${preparingCompany}" (the preparing company / service provider) TO the client. Refer to the service provider as "${preparingCompany}" throughout — never as "Propello".`
+      : '\\nRefer to the service provider by the preparingCompany name in the details — never as "Propello".') +
     '\\nUse ONLY these confirmed values for hard facts; output "[TBD]" for anything missing, EXCEPT totalCost/budget — ' +
     'if those are not provided, estimate a ballpark budget range based on the scope and complexity instead.\\n\\n' +
     'CONFIRMED DETAILS (JSON):\\n' + JSON.stringify({
+      preparingCompany: preparingCompany || null,
       clientCompany: intake.company || null,
       projectTitle: intake.title || null,
       clientContactName: intake.contactName || null,
@@ -1334,8 +1354,8 @@ async function generate() {
       validUntil: intake.validUntil || null,
       documentNumber: intake.documentNumber || null,
       preparedDate: intake.preparedDate || null,
-      signatory: intake.signatory,
-      signatoryTitle: intake.signatoryTitle,
+      signatory: intake.signatory || null,
+      signatoryTitle: intake.signatoryTitle || null,
       budget: intake.budget || null,
       paymentDetails: intake.paymentDetails || null,
     }, null, 2) +
@@ -1439,6 +1459,10 @@ async function generate() {
       // Use the reserved unique number so the saved record is distinct.
       if (intake.documentNumber) proposal.meta.documentNumber = intake.documentNumber;
     }
+    // The preparing party is the logged-in user's own company, never the tool
+    // name — force it regardless of what the model echoed back.
+    proposal.preparedBy = proposal.preparedBy || {};
+    if (preparingCompany) proposal.preparedBy.company = preparingCompany;
     const internal = ensureInternal(proposal);
     internal.industryProfile = internalContext.industryProfile;
     internal.template = intake.internal.template;
@@ -1544,7 +1568,7 @@ function render(d) {
         </div>
         <div class="p-party">
           <div class="p-party__label">Prepared by</div>
-          <div class="p-party__name">${esc(pb.company || 'Propello')}</div>
+          <div class="p-party__name">${esc(pb.company || '[TBD]')}</div>
           <div class="p-party__meta">${esc(pb.name || '')}${pb.title ? ' · ' + esc(pb.title) : ''}</div>
         </div>
       </div>
@@ -1604,12 +1628,13 @@ function render(d) {
   sec.push(`<section class="p-section">${sectionHead(10, 'Terms and Services')}<div class="p-terms">${terms}</div></section>`);
   const sign = `
     <section class="p-sign">
-      <p class="p-sign__intro">To proceed, the client may confirm acceptance in writing. Propello will then issue the reservation invoice and schedule a short scoping call to align on timeline, deliverables, and any final details.</p>
+      <p class="p-sign__intro">To proceed, the client may confirm acceptance in writing. ${esc(pb.company || 'We')} will then issue the reservation invoice and schedule a short scoping call to align on timeline, deliverables, and any final details.</p>
       <div class="p-sign__line"></div>
-      <div class="p-sign__name">${esc(pb.name || 'Eric Jeremie Rotaquio')}</div>
-      <div class="p-sign__title">${esc(pb.title || 'Chief Executive Officer, Propello')}</div>
+      <div class="p-sign__name">${esc(pb.name || '[TBD]')}</div>
+      <div class="p-sign__title">${esc(pb.title || 'Authorized Signatory')}</div>
     </section>`;
-  const footer = `<div class="p-docfooter"><span><b>Propello</b></span><span>Confidential</span><span>www.propello.app</span></div>`;
+  const footerCo = esc(pb.company || '');
+  const footer = `<div class="p-docfooter">${footerCo ? `<span><b>${footerCo}</b></span>` : ''}<span>Confidential</span></div>`;
 
   const art = $('proposal');
   art.innerHTML = cover + sec.join('') + sign + footer;
@@ -1708,7 +1733,7 @@ function renderInvoice(d) {
         </div>
         <div class="p-party">
           <div class="p-party__label">From</div>
-          <div class="p-party__name">${esc(pb.company || 'Propello')}</div>
+          <div class="p-party__name">${esc(pb.company || '[TBD]')}</div>
           <div class="p-party__meta">TIN: ${esc(pb.tin || '[TBD]')}</div>
         </div>
       </div>
@@ -1733,7 +1758,8 @@ function renderInvoice(d) {
       ${Array.isArray(d.paymentOptions) && d.paymentOptions.length ? list(d.paymentOptions) : ''}
     </section>`;
 
-  const footer = `<div class="p-docfooter"><span><b>Propello</b></span><span>Confidential</span><span>www.propello.app</span></div>`;
+  const footerCo = esc(pb.company || '');
+  const footer = `<div class="p-docfooter">${footerCo ? `<span><b>${footerCo}</b></span>` : ''}<span>Confidential</span></div>`;
 
   const art = $('proposal');
   art.innerHTML = cover + itemsSection + paymentSection + footer;
@@ -2135,6 +2161,7 @@ async function populateSettings() {
     profileForm.hidden = false;
     const meta = session.user.user_metadata || {};
     $('settingsName').value = meta.full_name || '';
+    $('settingsCompany').value = meta.company || '';
     $('settingsEmail').value = session.user.email || '';
     applySettingsAvatar();
   }
@@ -2220,13 +2247,20 @@ async function handleSaveProfile() {
   btn.disabled = true;
   btn.textContent = 'Saving…';
   const fullName = $('settingsName').value.trim();
-  const { error } = await updateUserProfile({ fullName });
+  const company = $('settingsCompany').value.trim();
+  const { error } = await updateUserProfile({ fullName, company });
   btn.disabled = false;
   btn.textContent = 'Save profile';
   if (error) {
     setSettingsStatus('settingsProfileStatus', 'error', error.message || 'Could not save profile.');
   } else {
     setSettingsStatus('settingsProfileStatus', 'ok', 'Profile saved.');
+    // Reflect the saved company on the proposal/invoice "prepared by" fields.
+    if (currentSession && currentSession.user) {
+      currentSession.user.user_metadata = { ...(currentSession.user.user_metadata || {}), full_name: fullName, company };
+    }
+    const myCo = $('f_myCompany'); if (myCo && !myCo.value.trim()) myCo.value = company;
+    const invCo = $('f_inv_company'); if (invCo && !invCo.value.trim()) invCo.value = company;
     // Refresh sidebar name/initials
     const sidebarName = document.getElementById('sidebarUserName');
     if (sidebarName) sidebarName.textContent = fullName;
@@ -2819,9 +2853,19 @@ async function updateAuthState() {
     const navBtn = $('authNavBtn');
     const greeting = $('authGreeting');
     if (session) {
-      const fullName = (session.user.user_metadata && session.user.user_metadata.full_name) || '';
+      const md = session.user.user_metadata || {};
+      const fullName = md.full_name || '';
       const displayName = fullName.trim() || session.user.email.split('@')[0];
       const firstName = displayName.trim().split(/\s+/)[0];
+
+      // Prefill "prepared by" identity from the profile so proposals/invoices
+      // carry the user's own company — not the tool name. Never clobber typing.
+      const company = (md.company || '').trim();
+      const setIfEmpty = (id, val) => { const el = $(id); if (el && val && !el.value.trim()) el.value = val; };
+      setIfEmpty('f_myCompany', company);
+      setIfEmpty('f_inv_company', company);
+      setIfEmpty('f_signatory', fullName.trim());
+      setIfEmpty('f_signatoryTitle', company ? `Chief Executive Officer, ${company}` : '');
 
       navBtn.hidden = true;
       greeting.hidden = false;

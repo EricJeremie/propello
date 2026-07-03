@@ -345,13 +345,14 @@ export async function deleteUserTemplate(id) {
    so no client account is needed. Returns { ok } or { error }. */
 /* ---------- User Account Updates ---------- */
 
-export async function updateUserProfile({ fullName, avatarDataUrl, industryProfile } = {}) {
+export async function updateUserProfile({ fullName, avatarDataUrl, industryProfile, company } = {}) {
   const sb = await getClient();
   if (!sb) return { error: { message: 'Offline — cannot update profile.' } };
   const data = {};
   if (fullName !== undefined) data.full_name = fullName;
   if (avatarDataUrl !== undefined) data.avatar_url = avatarDataUrl;
   if (industryProfile !== undefined) data.industry_profile = industryProfile;
+  if (company !== undefined) data.company = company;
   try {
     const { data: userData } = await sb.auth.getUser();
     const current = (userData && userData.user && userData.user.user_metadata) || {};
