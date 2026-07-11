@@ -1,0 +1,460 @@
+/* ============================================================
+   Propello dark mode
+   Loaded after the base app styles so it can override both the
+   generator shell and the requirements questionnaire.
+   ============================================================ */
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  --bg: #090d16;
+  --bg-card: #111827;
+  --bg-input: #0f172a;
+  --bg-subtle: #0f1724;
+  --text: #e5e7eb;
+  --text-muted: #94a3b8;
+  --rausch: #60a5fa;
+  --rausch-hover: #3b82f6;
+  --rausch-tint: rgba(59, 130, 246, 0.14);
+  --border: #243244;
+  --shadow: 0 16px 36px rgba(2, 6, 23, 0.46);
+}
+
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top, rgba(26, 86, 176, 0.24), transparent 34rem),
+    linear-gradient(180deg, #0b1020 0%, #070b12 100%);
+  color: var(--text);
+}
+
+/* Theme toggle controls */
+.theme-toggle {
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.theme-toggle__icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.theme-toggle__icon--sun {
+  display: none;
+}
+
+.theme-toggle__label {
+  white-space: nowrap;
+}
+
+html[data-theme="dark"] .theme-toggle__icon--moon {
+  display: none;
+}
+
+html[data-theme="dark"] .theme-toggle__icon--sun {
+  display: inline-flex;
+}
+
+.app-sidebar__item--theme {
+  margin-top: 0.15rem;
+}
+
+.app-sidebar__item--theme .theme-toggle__label {
+  font-weight: 500;
+}
+
+.app-mobile-bar__theme {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-mobile-bar__theme:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.app-mobile-bar__theme .theme-toggle__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.auth-gate__topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+/* Shared shell polish */
+html[data-theme="dark"] .btn--ghost:hover,
+html[data-theme="dark"] .btn--ghost:focus-visible {
+  background: rgba(96, 165, 250, 0.08);
+}
+
+html[data-theme="dark"] .btn__kbd {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .app-sidebar__logout:hover {
+  background: rgba(96, 165, 250, 0.12);
+  color: #bfdbfe;
+}
+
+html[data-theme="dark"] .app-sidebar__collapse-btn:hover,
+html[data-theme="dark"] .app-mobile-bar__hamburger:hover {
+  background: var(--bg-subtle);
+}
+
+html[data-theme="dark"] .doc-card__thumb {
+  background: #0b1220;
+}
+
+html[data-theme="dark"] .doc-card__type--proposal {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+html[data-theme="dark"] .doc-card__type--invoice {
+  color: #bfdbfe;
+  background: rgba(96, 165, 250, 0.14);
+}
+
+html[data-theme="dark"] .doc-card__type--questionnaire {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+html[data-theme="dark"] .doc-card__delete {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .doc-card__delete:hover {
+  background: rgba(96, 165, 250, 0.12);
+  border-color: rgba(96, 165, 250, 0.24);
+  color: #bfdbfe;
+}
+
+html[data-theme="dark"] .quick-search__item:hover,
+html[data-theme="dark"] .quick-search__item--active {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.28);
+}
+
+html[data-theme="dark"] .quick-search__title,
+html[data-theme="dark"] .dash-page__title,
+html[data-theme="dark"] .dash-section__title,
+html[data-theme="dark"] .dash-page__login h2,
+html[data-theme="dark"] .tmpl-card__name,
+html[data-theme="dark"] .tmpl-modal__title,
+html[data-theme="dark"] .auth-gate__title,
+html[data-theme="dark"] .rq-mode__title,
+html[data-theme="dark"] .rq-chat__title,
+html[data-theme="dark"] .rq-hero__title,
+html[data-theme="dark"] .rq-review-header__title,
+html[data-theme="dark"] .rq-thankyou__title,
+html[data-theme="dark"] .rq-step__title,
+html[data-theme="dark"] .rq-card .label,
+html[data-theme="dark"] .rq-choice__label,
+html[data-theme="dark"] .rq-check__label,
+html[data-theme="dark"] .rq-summary__value,
+html[data-theme="dark"] .rq-chat-message__text,
+html[data-theme="dark"] .rq-chat-fact__value,
+html[data-theme="dark"] .tf-q__title,
+html[data-theme="dark"] .tf-choice__label,
+html[data-theme="dark"] .tf-q__keyhint b {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .rq-mode__intro,
+html[data-theme="dark"] .rq-mode-card__body span,
+html[data-theme="dark"] .rq-chat__eyebrow,
+html[data-theme="dark"] .rq-chat-message__name,
+html[data-theme="dark"] .rq-chat__composer-foot > span,
+html[data-theme="dark"] .rq-chat__progress,
+html[data-theme="dark"] .rq-chat__empty,
+html[data-theme="dark"] .rq-chat__generate-hint,
+html[data-theme="dark"] .rq-chat__missing h3,
+html[data-theme="dark"] .rq-review-header__sub,
+html[data-theme="dark"] .rq-thankyou__sub,
+html[data-theme="dark"] .rq-summary__label,
+html[data-theme="dark"] .rq-staff-hint,
+html[data-theme="dark"] .rq-share-hint,
+html[data-theme="dark"] .rq-step__help,
+html[data-theme="dark"] .tf-q__help,
+html[data-theme="dark"] .tf-q__keyhint,
+html[data-theme="dark"] .tf-choice__hint,
+html[data-theme="dark"] .dash-page__subtitle,
+html[data-theme="dark"] .dash-section__sub,
+html[data-theme="dark"] .dash-page__empty,
+html[data-theme="dark"] .dash-page__loading,
+html[data-theme="dark"] .dash-page__login p,
+html[data-theme="dark"] .quick-search__meta {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .rq-mode-card:not(.rq-mode-card--ai),
+html[data-theme="dark"] .rq-chat__starters button,
+html[data-theme="dark"] .rq-chat__composer,
+html[data-theme="dark"] .rq-chat__conversation,
+html[data-theme="dark"] .rq-card,
+html[data-theme="dark"] .rq-choice,
+html[data-theme="dark"] .rq-check,
+html[data-theme="dark"] .rq-share-card,
+html[data-theme="dark"] .rq-staff-card,
+html[data-theme="dark"] .rq-srd-toolbar,
+html[data-theme="dark"] .tf-choice,
+html[data-theme="dark"] .tf-input--area,
+html[data-theme="dark"] .tf-choice__key,
+html[data-theme="dark"] .tf-error {
+  background: var(--bg-card);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .rq-mode-card {
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.34);
+}
+
+html[data-theme="dark"] .rq-mode-card--ai {
+  border-color: rgba(96, 165, 250, 0.35);
+  background:
+    radial-gradient(circle at 88% 12%, rgba(96, 165, 250, 0.28), transparent 34%),
+    linear-gradient(145deg, #0c1424, #101a2d);
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.36);
+}
+
+html[data-theme="dark"] .rq-mode-card__icon--form {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .industry-setup {
+  border-color: rgba(96, 165, 250, 0.32);
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(9, 13, 22, 0.98)),
+    radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 12rem);
+  box-shadow:
+    inset 0 1px 0 rgba(191, 219, 254, 0.06),
+    0 12px 28px rgba(2, 6, 23, 0.28);
+}
+
+html[data-theme="dark"] .industry-setup__copy strong {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .industry-setup__copy p,
+html[data-theme="dark"] .industry-setup .label,
+html[data-theme="dark"] .industry-setup .card__hint {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .industry-setup .input {
+  background: #121a2d;
+  border-color: #314258;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .industry-setup .input:focus {
+  border-color: var(--rausch);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+}
+
+html[data-theme="dark"] .rq-chat__conversation {
+  background:
+    linear-gradient(rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.95)),
+    radial-gradient(circle at 1px 1px, rgba(96, 165, 250, 0.14) 1px, transparent 0);
+  background-size: auto, 20px 20px;
+}
+
+html[data-theme="dark"] .rq-chat__composer {
+  border-top: 1px solid var(--border);
+}
+
+html[data-theme="dark"] .rq-chat__composer textarea {
+  background: transparent;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .rq-choice--checked .rq-choice__hint {
+  color: #fda4af;
+}
+
+html[data-theme="dark"] .rq-chat-message--user .rq-chat-message__text {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.22);
+}
+
+html[data-theme="dark"] .rq-chat-message__avatar {
+  background: #0f172a;
+  color: #fff;
+}
+
+html[data-theme="dark"] .rq-chat__brief-head,
+html[data-theme="dark"] .rq-chat__missing,
+html[data-theme="dark"] .rq-chat-fact,
+html[data-theme="dark"] .rq-chat__composer {
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .rq-chat__brief-head > span:first-child,
+html[data-theme="dark"] .rq-chat__missing h3 {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .rq-chat__progress {
+  background: rgba(59, 130, 246, 0.12);
+}
+
+html[data-theme="dark"] .rq-chat__missing-list span {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .rq-chat__send,
+html[data-theme="dark"] .tf-ok {
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
+}
+
+html[data-theme="dark"] .tf-input {
+  border-bottom-color: #334155;
+  color: var(--text);
+}
+
+html[data-theme="dark"] .tf-input::placeholder {
+  color: #64748b;
+}
+
+html[data-theme="dark"] .tf-input--area {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .tf-choice {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: #334155;
+}
+
+html[data-theme="dark"] .tf-choice:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(96, 165, 250, 0.38);
+}
+
+html[data-theme="dark"] .tf-choice--selected {
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.75);
+}
+
+html[data-theme="dark"] .tf-choice__key {
+  background: #0f172a;
+  border-color: #334155;
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .tf-error {
+  background: rgba(127, 29, 29, 0.34);
+  color: #fecaca;
+}
+
+html[data-theme="dark"] .tf-progress {
+  background: #1f2937;
+}
+
+html[data-theme="dark"] .tf-navbtn:disabled {
+  background: #243244;
+  color: #7c8aa5;
+}
+
+html[data-theme="dark"] .dash-page__tab:hover {
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+html[data-theme="dark"] .dash-page__tab--active {
+  border-color: rgba(96, 165, 250, 0.34);
+  background: rgba(59, 130, 246, 0.14);
+}
+
+html[data-theme="dark"] .tmpl-card {
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.34);
+}
+
+html[data-theme="dark"] .tmpl-card:hover {
+  border-color: rgba(96, 165, 250, 0.34);
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.44);
+}
+
+html[data-theme="dark"] .tmpl-card__icon {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+html[data-theme="dark"] .tmpl-card__delete:hover {
+  background: rgba(96, 165, 250, 0.12);
+}
+
+html[data-theme="dark"] .doc-card__thumb,
+html[data-theme="dark"] .quick-search__shortcut,
+html[data-theme="dark"] .editor-toolbar__dropdown,
+html[data-theme="dark"] .user-menu__dropdown,
+html[data-theme="dark"] .toast {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .quick-search__shortcut {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .paper-wrap {
+  background: #f8fafc;
+  color: #1e293b;
+  box-shadow: 0 24px 56px rgba(2, 6, 23, 0.42);
+}
+
+html[data-theme="dark"] .find-bar {
+  box-shadow: 0 18px 42px rgba(2, 6, 23, 0.38);
+}
+
+html[data-theme="dark"] .modal {
+  background: rgba(2, 6, 23, 0.68);
+}
+
+html[data-theme="dark"] .collab-banner {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(96, 165, 250, 0.18);
+  color: #dbeafe;
+}
+
+html[data-theme="dark"] .collab-avatar {
+  border-color: var(--bg-card);
+}
+
+html[data-theme="dark"] .appbar__divider,
+html[data-theme="dark"] .app-sidebar__divider,
+html[data-theme="dark"] .app-sidebar__footer,
+html[data-theme="dark"] .app-sidebar__brand,
+html[data-theme="dark"] .app-sidebar__user,
+html[data-theme="dark"] .app-sidebar__collapse-btn,
+html[data-theme="dark"] .app-mobile-bar,
+html[data-theme="dark"] .app-sidebar {
+  border-color: var(--border);
+}
+
+html[data-theme="dark"] .app-sidebar__brand,
+html[data-theme="dark"] .app-sidebar__user,
+html[data-theme="dark"] .app-sidebar__footer,
+html[data-theme="dark"] .app-mobile-bar {
+  background: var(--bg-card);
+}

@@ -1,6 +1,6 @@
 'use strict';
 
-import { initLayout } from './nav.js?v=30';
+import { initLayout } from './nav.js?v=31';
 import {
   getSession, signIn, signUp, signOut, onAuthChange,
   fetchUserProposals, fetchUserQuestionnaires,
@@ -21,6 +21,19 @@ import {
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function showToast(message, kind = 'info') {
+  let toast = document.querySelector('.toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.className = `toast toast--visible ${kind === 'error' ? 'toast--error' : 'toast--success'}`;
+  window.clearTimeout(showToast._timer);
+  showToast._timer = window.setTimeout(() => toast.classList.remove('toast--visible'), 2600);
+}
 
 function setIndustryQuestionControlsEnabled(root, enabled) {
   if (!root) return;
@@ -159,11 +172,11 @@ function renderGrid(items) {
       if (!confirm('Delete this document? This cannot be undone.')) return;
       if (type === 'questionnaire') {
         const { error } = await deleteQuestionnaire(id);
-        if (error) { alert('Could not delete: ' + (error.message || error)); return; }
+        if (error) { showToast('Could not delete: ' + (error.message || error), 'error'); return; }
         allQuestionnaires = allQuestionnaires.filter(q => q.id !== id);
       } else {
         const { error } = await deleteProposal(id);
-        if (error) { alert('Could not delete: ' + (error.message || error)); return; }
+        if (error) { showToast('Could not delete: ' + (error.message || error), 'error'); return; }
         allProposals = allProposals.filter(p => p.id !== id);
       }
       applyFilter();
@@ -227,7 +240,7 @@ async function renderTemplates() {
       e.stopPropagation();
       if (!confirm('Delete this uploaded template? This cannot be undone.')) return;
       const { error } = await deleteUserTemplate(btn.dataset.delete);
-      if (error) { alert('Could not delete: ' + (error.message || error)); return; }
+      if (error) { showToast('Could not delete: ' + (error.message || error), 'error'); return; }
       renderTemplates();
     });
   });

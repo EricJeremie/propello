@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Propello — My Workspace</title>
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('pd-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
   <!-- Auth gate: hide until we confirm a session, then redirect unauthenticated visitors to login. -->
   <script>
     document.documentElement.classList.add('auth-gating');
@@ -15,13 +28,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=44" />
+  <link rel="stylesheet" href="styles.css?v=47" />
+  <link rel="stylesheet" href="theme.css?v=2" />
 </head>
 <body>
 
   <!-- Auth gate (full-screen login — shown when not authenticated) -->
   <div id="authGate" class="auth-gate" hidden>
     <div class="auth-gate__card card">
+      <div class="auth-gate__topbar">
+        <button type="button" class="btn btn--ghost btn--sm theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+          <svg class="theme-toggle__icon theme-toggle__icon--moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="theme-toggle__icon theme-toggle__icon--sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          <span class="theme-toggle__label" data-theme-label>Dark mode</span>
+        </button>
+      </div>
       <img src="assets/logo.svg" alt="Propello" class="auth-gate__logo" />
       <h1 class="auth-gate__title">My Documents</h1>
       <p class="auth-gate__sub">Sign in to access your proposals, invoices, and client documents.</p>
@@ -68,6 +94,16 @@
             <a class="btn btn--primary" href="index.html">+ New proposal</a>
             <a class="btn btn--ghost" href="requirements.html">New requirements</a>
             <a class="btn btn--ghost" href="index.html?mode=invoice">New invoice</a>
+            <button type="button" class="btn btn--ghost theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+              <svg class="theme-toggle__icon theme-toggle__icon--moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+              <svg class="theme-toggle__icon theme-toggle__icon--sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+              </svg>
+              <span class="theme-toggle__label" data-theme-label>Dark mode</span>
+            </button>
           </div>
         </div>
 
@@ -108,6 +144,6 @@
     </main>
   </div>
 
-  <script type="module" src="dashboard.js?v=12"></script>
+  <script type="module" src="dashboard.js?v=14"></script>
 </body>
 </html>

@@ -7,7 +7,7 @@
 
 import { getClient, getSession, signIn, signUp, saveProposal, fetchUserProposals, deleteProposal, fetchProposalById, fetchUserQuestionnaires, deleteQuestionnaire, fetchUserTemplates, TEMPLATE_BUCKET, SUPABASE_URL, SUPABASE_ANON_KEY, updateUserProfile, updateUserEmail, updateUserPassword, enableShare, disableShare, getSharedDoc, saveSharedDoc, createDocChannel } from './supabase.js?v=31';
 import { openTemplateUpload } from './template-upload.js?v=1';
-import { initLayout } from './nav.js?v=30';
+import { initLayout } from './nav.js?v=31';
 import { createQuickSearch } from './quick-search.js';
 import {
   buildIndustryMetadata,
@@ -27,13 +27,24 @@ import {
 const MODEL = 'gemini-2.5-flash';
 // Generation goes through a Vercel Function, which holds the Gemini key
 // as a server-side secret. The browser never sees the key.
-const PRODUCTION_ORIGIN = 'https://pocketdevs-proposal-generator.vercel.app';
+const PRODUCTION_ORIGIN = 'https://propelloapp.vercel.app';
 const IS_LOCAL_PREVIEW = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const API_URL = `${IS_LOCAL_PREVIEW ? PRODUCTION_ORIGIN : window.location.origin}/api/generate-proposal`;
 const LS_LOGO = 'pdv_logo';
 const LS_PROPOSAL_COLOR = 'pdv_proposal_color';
 const DEFAULT_LOGO = 'assets/logo.svg';
 const DEFAULT_PROPOSAL_COLOR = '#f2384a';
+const PAYMENT_BANKS = {
+  bpi: { badge: 'BPI', bank: 'Bank of the Philippine Islands (BPI)', color: '#c8102e' },
+  bdo: { badge: 'BDO', bank: 'BDO Unibank', color: '#003b8f' },
+  metrobank: { badge: 'MB', bank: 'Metrobank', color: '#1f4fa3' },
+  unionbank: { badge: 'UB', bank: 'UnionBank', color: '#f05a28' },
+  gcash: { badge: 'GCash', bank: 'GCash', color: '#0072ce' },
+  maya: { badge: 'Maya', bank: 'Maya', color: '#00a86b' },
+  rcbc: { badge: 'RCBC', bank: 'RCBC', color: '#0f3d7a' },
+  'security-bank': { badge: 'SB', bank: 'Security Bank', color: '#005bac' },
+  custom: { badge: 'Bank', bank: 'Other bank', color: '#475569' },
+};
 
 const STYLE_EXEMPLAR = `
 Strong proposals read like this reference (AI-Assisted Development Training & Consultation for Elgada BPO):
@@ -44,7 +55,8 @@ Strong proposals read like this reference (AI-Assisted Development Training & Co
 - Money is stated plainly (e.g. "Php 20,000 per facilitated hour"; totals exclusive of VAT and reimbursables).
 - Terms cover: confirmation & payment (e.g. 50% reservation), taxes & expenses (exclusive of VAT),
   rescheduling, scope control, IP / internal-use license, and validity.
-- Signatory is the preparing company's CEO or an authorized signatory.
+- The final acceptance signature block is for the client's authorized signer, using the confirmed
+  client signatory/contact name and title. Do not invent signer names or roles.
 `;
 
 const SYSTEM_PROMPT = `You are an expert proposal writer. You draft each proposal ON BEHALF OF the user's own
@@ -108,8 +120,8 @@ const PROPOSAL_SCHEMA = obj({
     contactTitle: str('Contact role, or [TBD]'),
   }),
   preparedBy: obj({
-    name: str('Signatory name'),
-    title: str('Signatory title'),
+    name: str('Optional preparing-company representative name. Leave [TBD] if not explicitly provided. This is not the client acceptance signer.'),
+    title: str('Optional preparing-company representative title. Leave [TBD] if not explicitly provided. This is not the client acceptance signer.'),
     company: str('The preparing company issuing this proposal — use the preparingCompany value from the confirmed details, never Propello.'),
   }),
   executiveSummary: str('2-4 paragraph executive summary. Use \\n\\n between paragraphs.'),
@@ -418,6 +430,104 @@ function handleLogo(file) {
 }
 
 /* ---------- Intake ---------- */
+function getPaymentBankConfig(bankId) {
+  return PAYMENT_BANKS[bankId] || PAYMENT_BANKS.custom;
+}
+
+function paymentControlIds(scope = 'proposal') {
+  if (scope === 'invoice') {
+    return {
+      toggle: 'f_inv_includePaymentDetails',
+      fields: 'invPaymentDetailsFields',
+      bank: 'f_inv_paymentBank',
+      customBank: 'f_inv_paymentCustomBank',
+      accountName: 'f_inv_paymentAccountName',
+      accountNumber: 'f_inv_paymentAccountNumber',
+      badge: 'invPaymentBankBadge',
+      previewName: 'invPaymentBankPreviewName',
+      customField: 'invPaymentCustomBankField',
+    };
+  }
+  return {
+    toggle: 'f_includePaymentDetails',
+    fields: 'paymentDetailsFields',
+    bank: 'f_paymentBank',
+    customBank: 'f_paymentCustomBank',
+    accountName: 'f_paymentAccountName',
+    accountNumber: 'f_paymentAccountNumber',
+    badge: 'paymentBankBadge',
+    previewName: 'paymentBankPreviewName',
+    customField: 'paymentCustomBankField',
+  };
+}
+
+function collectPaymentAccount(scope = 'proposal') {
+  const ids = paymentControlIds(scope);
+  const enabled = !!$(ids.toggle)?.checked;
+  const bankId = $(ids.bank)?.value || 'bpi';
+  const bankConfig = getPaymentBankConfig(bankId);
+  const customBank = $(ids.customBank)?.value.trim() || '';
+  const bankName = bankId === 'custom' ? customBank : bankConfig.bank;
+  return {
+    enabled,
+    bankId,
+    bankName,
+    accountName: $(ids.accountName)?.value.trim() || '',
+    accountNumber: $(ids.accountNumber)?.value.trim() || '',
+    badge: bankId === 'custom' && customBank ? customBank.slice(0, 4).toUpperCase() : bankConfig.badge,
+    color: bankConfig.color,
+  };
+}
+
+function updatePaymentBankPreview(scope = 'proposal') {
+  const ids = paymentControlIds(scope);
+  const bankId = $(ids.bank)?.value || 'bpi';
+  const customBank = $(ids.customBank)?.value.trim() || '';
+  const bankConfig = getPaymentBankConfig(bankId);
+  const bankName = bankId === 'custom' && customBank ? customBank : bankConfig.bank;
+  const badge = bankId === 'custom' && customBank ? customBank.slice(0, 4).toUpperCase() : bankConfig.badge;
+  const badgeEl = $(ids.badge);
+  const nameEl = $(ids.previewName);
+  const customField = $(ids.customField);
+  if (badgeEl) {
+    badgeEl.textContent = badge;
+    badgeEl.style.setProperty('--bank-color', bankConfig.color);
+  }
+  if (nameEl) nameEl.textContent = bankName;
+  if (customField) customField.hidden = bankId !== 'custom';
+}
+
+function syncPaymentDetailsFields(scope = 'proposal') {
+  const ids = paymentControlIds(scope);
+  const toggle = $(ids.toggle);
+  const fields = $(ids.fields);
+  if (!toggle || !fields) return;
+  fields.hidden = !toggle.checked;
+  toggle.setAttribute('aria-expanded', String(toggle.checked));
+  updatePaymentBankPreview(scope);
+}
+
+function initPaymentDetailsControls(scope = 'proposal') {
+  const ids = paymentControlIds(scope);
+  $(ids.toggle)?.addEventListener('change', () => syncPaymentDetailsFields(scope));
+  $(ids.bank)?.addEventListener('change', () => updatePaymentBankPreview(scope));
+  $(ids.customBank)?.addEventListener('input', () => updatePaymentBankPreview(scope));
+  syncPaymentDetailsFields(scope);
+}
+
+function initClientSignatoryControls() {
+  const contact = $('f_contact');
+  const contactTitle = $('f_contactTitle');
+  const signer = $('f_signatory');
+  const signerTitle = $('f_signatoryTitle');
+  contact?.addEventListener('input', () => {
+    if (signer && !signer.value.trim()) signer.value = contact.value.trim();
+  });
+  contactTitle?.addEventListener('input', () => {
+    if (signerTitle && !signerTitle.value.trim()) signerTitle.value = contactTitle.value.trim();
+  });
+}
+
 function collectIntake() {
   return {
     company: $('f_company').value.trim(),
@@ -433,11 +543,11 @@ function collectIntake() {
     documentNumber: $('f_docno').value.trim(),
     preparedDate: $('f_date').value.trim(),
     myCompany: $('f_myCompany').value.trim(),
-    signatory: $('f_signatory').value.trim(),
-    signatoryTitle: $('f_signatoryTitle').value.trim(),
+    signatory: $('f_signatory').value.trim() || $('f_contact').value.trim(),
+    signatoryTitle: $('f_signatoryTitle').value.trim() || $('f_contactTitle').value.trim(),
     notes: $('f_notes').value.trim(),
     budget: $('f_budget').value.trim(),
-    paymentDetails: $('f_paymentDetails').value.trim(),
+    paymentAccount: collectPaymentAccount(),
     proposalName: $('f_proposalName').value.trim(),
     internal: collectInternalControls(),
   };
@@ -456,7 +566,8 @@ function collectInvoiceIntake() {
     locale: getLocale('f_inv_locale'),
     invoiceDate: $('f_inv_date').value.trim(),
     dueDate: $('f_inv_due').value.trim(),
-    paymentDetails: $('f_inv_paymentDetails').value.trim(),
+    paymentDetails: $('f_inv_includePaymentDetails')?.checked ? ($('f_inv_paymentDetails')?.value.trim() || '') : '',
+    paymentAccount: collectPaymentAccount('invoice'),
     invoiceName: $('f_inv_name').value.trim(),
   };
 }
@@ -1312,12 +1423,9 @@ async function generate() {
   } catch { /* offline or signed out — the save is best-effort anyway */ }
 
   // "Prepared by" is always the logged-in user's own company — never the tool
-  // name. Take it from the form, falling back to the saved profile, and remember
-  // it on the profile so it prefills next time.
+  // name. The acceptance signatory is the client, not the service provider.
   const authMeta = (session && session.user && session.user.user_metadata) || {};
   const preparingCompany = (intake.myCompany || authMeta.company || '').trim();
-  if (!intake.signatory) intake.signatory = (authMeta.full_name || '').trim();
-  if (!intake.signatoryTitle) intake.signatoryTitle = preparingCompany ? `Chief Executive Officer, ${preparingCompany}` : '';
   if (intake.myCompany && intake.myCompany !== authMeta.company) {
     updateUserProfile({ company: intake.myCompany }).catch(() => { /* best-effort — save is non-blocking */ });
   }
@@ -1354,10 +1462,14 @@ async function generate() {
       validUntil: intake.validUntil || null,
       documentNumber: intake.documentNumber || null,
       preparedDate: intake.preparedDate || null,
-      signatory: intake.signatory || null,
-      signatoryTitle: intake.signatoryTitle || null,
+      clientSignatoryName: intake.signatory || intake.contactName || null,
+      clientSignatoryTitle: intake.signatoryTitle || intake.contactTitle || null,
       budget: intake.budget || null,
-      paymentDetails: intake.paymentDetails || null,
+      paymentAccount: intake.paymentAccount?.enabled ? {
+        bankName: intake.paymentAccount.bankName || null,
+        accountName: intake.paymentAccount.accountName || null,
+        accountNumber: intake.paymentAccount.accountNumber || null,
+      } : null,
     }, null, 2) +
     '\\n\\nINTERNAL TEMPLATE / REUSABLE BLOCKS / PRICING CONTEXT (JSON):\\n' + JSON.stringify(internalContext, null, 2) +
     '\\nUse this internal context to shape scope, wording, risk controls, and pricing tables when it is relevant. Do not expose the phrase "internal context" in the proposal.' +
@@ -1454,15 +1566,24 @@ async function generate() {
     // typed something, regardless of what the model echoed back.
     if (proposal.meta) {
       proposal.meta.budget = intake.budget || '';
-      proposal.meta.paymentDetails = intake.paymentDetails || '';
+      proposal.meta.paymentDetails = '';
+      proposal.meta.paymentAccount = intake.paymentAccount?.enabled ? intake.paymentAccount : null;
+      proposal.meta.clientSignatory = intake.signatory || intake.contactName || '';
+      proposal.meta.clientSignatoryTitle = intake.signatoryTitle || intake.contactTitle || '';
       if (intake.proposalName) proposal.meta.title = intake.proposalName;
       // Use the reserved unique number so the saved record is distinct.
       if (intake.documentNumber) proposal.meta.documentNumber = intake.documentNumber;
     }
+    proposal.client = proposal.client || {};
+    proposal.client.company = intake.company || proposal.client.company || '[TBD]';
+    proposal.client.contactName = intake.contactName || proposal.client.contactName || '[TBD]';
+    proposal.client.contactTitle = intake.contactTitle || proposal.client.contactTitle || '[TBD]';
     // The preparing party is the logged-in user's own company, never the tool
     // name — force it regardless of what the model echoed back.
     proposal.preparedBy = proposal.preparedBy || {};
     if (preparingCompany) proposal.preparedBy.company = preparingCompany;
+    proposal.preparedBy.name = '';
+    proposal.preparedBy.title = '';
     const internal = ensureInternal(proposal);
     internal.industryProfile = internalContext.industryProfile;
     internal.template = intake.internal.template;
@@ -1527,16 +1648,25 @@ function formatAmount(n, prefix) {
   return `${prefix}${Math.round(n).toLocaleString('en-US')}`;
 }
 
-/* Propello' default bank/e-wallet accounts, shown in Payment Options unless
-   the user provides their own payment details. */
-const PAYMENT_ACCOUNTS = [
-  { badge: 'BPI', badgeClass: 'p-paymethod__badge--bpi', bank: 'Bank of the Philippine Islands (BPI)', name: 'Bryl Kezter Lim', account: '9939078077' },
-  { badge: 'GCash', badgeClass: 'p-paymethod__badge--gcash', bank: 'GCash', name: 'Bryl Kezter Lim', account: '09055210329' },
-];
-function paymentAccounts() {
-  return `<div class="p-paymethods">${PAYMENT_ACCOUNTS.map((a) => `
+function normalizePaymentAccount(account) {
+  if (!account || !account.enabled) return null;
+  const bankConfig = getPaymentBankConfig(account.bankId);
+  const bank = account.bankName || bankConfig.bank;
+  return {
+    badge: account.badge || bankConfig.badge,
+    color: account.color || bankConfig.color,
+    bank,
+    name: account.accountName || '[TBD]',
+    account: account.accountNumber || '[TBD]',
+  };
+}
+
+function paymentAccounts(accounts = []) {
+  const rows = (accounts || []).filter(Boolean);
+  if (!rows.length) return '';
+  return `<div class="p-paymethods">${rows.map((a) => `
     <div class="p-paymethod">
-      <div class="p-paymethod__badge ${a.badgeClass}">${esc(a.badge)}</div>
+      <div class="p-paymethod__badge" style="--bank-color: ${esc(a.color || '#475569')}">${esc(a.badge)}</div>
       <div class="p-paymethod__info">
         <div class="p-paymethod__bank">${esc(a.bank)}</div>
         <div class="p-paymethod__name">${esc(a.name)}</div>
@@ -1569,7 +1699,7 @@ function render(d) {
         <div class="p-party">
           <div class="p-party__label">Prepared by</div>
           <div class="p-party__name">${esc(pb.company || '[TBD]')}</div>
-          <div class="p-party__meta">${esc(pb.name || '')}${pb.title ? ' · ' + esc(pb.title) : ''}</div>
+          ${pb.name || pb.title ? `<div class="p-party__meta">${esc(pb.name || '')}${pb.title ? ' · ' + esc(pb.title) : ''}</div>` : ''}
         </div>
       </div>
     </header>`;
@@ -1611,27 +1741,33 @@ function render(d) {
     }
   }
   const mp = milestones.map((r) => `<tr><td>${esc(r.milestone)}</td><td class="num">${esc(r.percentage)}</td><td class="num">${esc(r.amount)}</td><td>${esc(r.trigger)}</td></tr>`).join('');
-  if (d.meta.paymentDetails) {
-    sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}<div class="p-lede"><p>${esc(d.meta.paymentDetails)}</p></div></section>`);
+  if (m.paymentDetails) {
+    sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div></section>`);
   } else {
     sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}
     <table class="p-table"><thead><tr><th>Milestone</th><th class="num">%</th><th class="num">Amount</th><th>Trigger</th></tr></thead><tbody>${mp}</tbody></table></section>`);
   }
-  if (d.meta.paymentDetails) {
-    sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}<div class="p-lede"><p>${esc(d.meta.paymentDetails)}</p></div></section>`);
+  const paymentAccount = normalizePaymentAccount(m.paymentAccount);
+  const paymentOptions = Array.isArray(d.paymentOptions) ? d.paymentOptions : [];
+  if (m.paymentDetails) {
+    sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div></section>`);
   } else {
-    sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}${paymentAccounts()}${list(d.paymentOptions)}</section>`);
+    const accountIntro = paymentAccount ? '<div class="p-lede"><p>Payment can be made through the following account.</p></div>' : '';
+    const optionsList = paymentOptions.length ? list(paymentOptions) : '<div class="p-lede"><p>Payment method to be confirmed.</p></div>';
+    sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}${accountIntro}${paymentAccounts(paymentAccount ? [paymentAccount] : [])}${optionsList}</section>`);
   }
   const pls = d.postLaunchSupport || {};
   sec.push(`<section class="p-section">${sectionHead(9, 'Post Launch Support')}${paras(pls.summary)}${list(pls.inclusions, 'p-list--check')}</section>`);
   const terms = (d.termsAndServices || []).map((t) => `<p class="p-term"><span class="p-term__h">${esc(t.heading)}:</span> <span class="p-term__b">${esc(t.body)}</span></p>`).join('');
   sec.push(`<section class="p-section">${sectionHead(10, 'Terms and Services')}<div class="p-terms">${terms}</div></section>`);
+  const clientSignerName = m.clientSignatory || c.contactName || '[TBD]';
+  const clientSignerTitle = m.clientSignatoryTitle || c.contactTitle || 'Authorized Client Signatory';
   const sign = `
     <section class="p-sign">
       <p class="p-sign__intro">To proceed, the client may confirm acceptance in writing. ${esc(pb.company || 'We')} will then issue the reservation invoice and schedule a short scoping call to align on timeline, deliverables, and any final details.</p>
       <div class="p-sign__line"></div>
-      <div class="p-sign__name">${esc(pb.name || '[TBD]')}</div>
-      <div class="p-sign__title">${esc(pb.title || 'Authorized Signatory')}</div>
+      <div class="p-sign__name">${esc(clientSignerName)}</div>
+      <div class="p-sign__title">${esc(clientSignerTitle)}</div>
     </section>`;
   const footerCo = esc(pb.company || '');
   const footer = `<div class="p-docfooter">${footerCo ? `<span><b>${footerCo}</b></span>` : ''}<span>Confidential</span></div>`;
@@ -1750,11 +1886,19 @@ function renderInvoice(d) {
     <table class="p-table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
     <tbody>${rows}<tr class="p-table__total"><td colspan="3">Total</td><td class="num">${formatAmount(total, prefix)}</td></tr></tbody></table></section>`;
 
+  const paymentAccount = normalizePaymentAccount(m.paymentAccount);
+  const paymentDetails = m.paymentDetails
+    ? `<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div>`
+    : '';
+  const paymentIntro = paymentAccount ? '<div class="p-lede"><p>Payment can be made through the following account.</p></div>' : '';
+  const paymentFallback = !paymentDetails && !paymentAccount ? '<div class="p-lede"><p>Payment details to be confirmed.</p></div>' : '';
   const paymentSection = `
     <section class="p-section">
       ${sectionHead(2, 'Payment Details')}
-      ${m.paymentDetails ? `<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div>` : '<div class="p-lede"><p>Payment can be made through the following accounts.</p></div>'}
-      ${paymentAccounts()}
+      ${paymentDetails}
+      ${paymentIntro}
+      ${paymentAccounts(paymentAccount ? [paymentAccount] : [])}
+      ${paymentFallback}
       ${Array.isArray(d.paymentOptions) && d.paymentOptions.length ? list(d.paymentOptions) : ''}
     </section>`;
 
@@ -1792,6 +1936,7 @@ async function generateInvoice() {
       currencySymbol: intake.currencySymbol,
       locale: intake.locale,
       paymentDetails: intake.paymentDetails,
+      paymentAccount: intake.paymentAccount?.enabled ? intake.paymentAccount : null,
     },
     client: { company: intake.client, contactName: intake.contact, tin: intake.clientTin || '[TBD]' },
     preparedBy: { company: intake.company, tin: intake.tin || '[TBD]' },
@@ -2737,7 +2882,7 @@ async function handleStopSharing() {
   if (!collab.id) return;
   if (!confirm('Stop sharing this document? The link will immediately stop working for everyone.')) return;
   const { error } = await disableShare(collab.id);
-  if (error) { alert('Could not stop sharing: ' + (error.message || error)); return; }
+  if (error) { showToast('Could not stop sharing: ' + (error.message || error), 'error'); return; }
   collab.isShared = false; collab.token = null;
   leaveCollab();
   updateShareButton();
@@ -2858,14 +3003,11 @@ async function updateAuthState() {
       const displayName = fullName.trim() || session.user.email.split('@')[0];
       const firstName = displayName.trim().split(/\s+/)[0];
 
-      // Prefill "prepared by" identity from the profile so proposals/invoices
-      // carry the user's own company — not the tool name. Never clobber typing.
+      // Prefill only the user's company. Client signer fields must stay client-owned.
       const company = (md.company || '').trim();
       const setIfEmpty = (id, val) => { const el = $(id); if (el && val && !el.value.trim()) el.value = val; };
       setIfEmpty('f_myCompany', company);
       setIfEmpty('f_inv_company', company);
-      setIfEmpty('f_signatory', fullName.trim());
-      setIfEmpty('f_signatoryTitle', company ? `Chief Executive Officer, ${company}` : '');
 
       navBtn.hidden = true;
       greeting.hidden = false;
@@ -2984,7 +3126,7 @@ async function refreshHistory() {
         e.stopPropagation();
         if (!confirm(`Delete this saved ${noun}? This cannot be undone.`)) return;
         const { error } = await deleteProposal(el.dataset.id);
-        if (error) { alert(`Could not delete ${noun}: ` + (error.message || error)); return; }
+        if (error) { showToast(`Could not delete ${noun}: ` + (error.message || error), 'error'); return; }
         refreshHistory();
       };
     });
@@ -3096,10 +3238,10 @@ function renderDashboardGrid(items) {
       if (!confirm('Delete this document? This cannot be undone.')) return;
       if (type === 'questionnaire') {
         const { error } = await deleteQuestionnaire(id);
-        if (error) { alert('Could not delete: ' + (error.message || error)); return; }
+        if (error) { showToast('Could not delete: ' + (error.message || error), 'error'); return; }
       } else {
         const { error } = await deleteProposal(id);
-        if (error) { alert('Could not delete: ' + (error.message || error)); return; }
+        if (error) { showToast('Could not delete: ' + (error.message || error), 'error'); return; }
       }
       refreshDashboard();
       refreshHistory();
@@ -3594,6 +3736,9 @@ function init() {
     autofillMeta();
     autofillInvoiceMeta();
     addLineItemRow();
+    initPaymentDetailsControls();
+    initPaymentDetailsControls('invoice');
+    initClientSignatoryControls();
     initInternalToolkit();
     updateAuthState();
 

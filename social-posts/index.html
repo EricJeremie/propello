@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Propello App Builders PH Social Posts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --blue: #1A56B0;
+      --blue-dark: #0F2D6B;
+      --blue-sky: #3B82F6;
+      --blue-soft: #EFF6FF;
+      --ink: #14161a;
+      --muted: #5b636f;
+      --line: #dce4f2;
+      --paper: #ffffff;
+      --cream: #fff8e8;
+      --mint: #e9fbf3;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --coral: #ef5d50;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #d9e4f3;
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .board {
+      display: grid;
+      gap: 48px;
+      padding: 48px;
+      justify-content: center;
+    }
+
+    .post {
+      width: 1080px;
+      height: 1080px;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, #f8fbff 0%, #e8f1ff 48%, #fff9ec 100%);
+      isolation: isolate;
+    }
+
+    .post::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(15, 45, 107, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 45, 107, 0.06) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(135deg, rgba(0, 0, 0, 0.78), transparent 72%);
+      z-index: -2;
+    }
+
+    .post::after {
+      content: "";
+      position: absolute;
+      right: -220px;
+      bottom: -260px;
+      width: 620px;
+      height: 620px;
+      background: radial-gradient(circle, rgba(26, 86, 176, 0.18), transparent 66%);
+      z-index: -1;
+    }
+
+    .topbar {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      top: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 4;
+    }
+
+    .logo {
+      width: 188px;
+      height: auto;
+      display: block;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border: 1px solid rgba(26, 86, 176, 0.18);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.76);
+      color: var(--blue-dark);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0;
+      box-shadow: 0 14px 40px rgba(15, 45, 107, 0.08);
+    }
+
+    .badge i {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 7px rgba(16, 185, 129, 0.14);
+    }
+
+    .copy {
+      position: absolute;
+      left: 64px;
+      top: 146px;
+      width: 560px;
+      z-index: 5;
+    }
+
+    .copy--wide { width: 710px; }
+    .copy--right {
+      left: auto;
+      right: 64px;
+      width: 510px;
+    }
+
+    .eyebrow {
+      display: block;
+      margin-bottom: 18px;
+      color: var(--blue);
+      font-size: 24px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue-dark);
+      font-size: 62px;
+      line-height: 0.98;
+      letter-spacing: 0;
+      font-weight: 900;
+    }
+
+    .copy p {
+      margin: 26px 0 0;
+      color: #334155;
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 600;
+    }
+
+    .chips {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 52px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      z-index: 6;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(15, 45, 107, 0.12);
+      color: var(--blue-dark);
+      font-size: 20px;
+      font-weight: 800;
+      box-shadow: 0 10px 26px rgba(15, 45, 107, 0.08);
+    }
+
+    .browser,
+    .panel,
+    .phone,
+    .paper {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(15, 45, 107, 0.12);
+      box-shadow: 0 28px 70px rgba(15, 45, 107, 0.18);
+    }
+
+    .browser {
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    .browser__bar {
+      height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 20px;
+      background: #f7f9fd;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .browser__dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #d8dfeb;
+    }
+
+    .browser__dot:nth-child(1) { background: #f06b63; }
+    .browser__dot:nth-child(2) { background: #f5bd4f; }
+    .browser__dot:nth-child(3) { background: #64c987; }
+
+    .browser__url {
+      margin-left: 12px;
+      height: 28px;
+      flex: 1;
+      border-radius: 999px;
+      background: #ebf1fb;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .landing-mock {
+      position: absolute;
+      right: 62px;
+      top: 206px;
+      width: 460px;
+      height: 545px;
+      transform: rotate(3deg);
+      z-index: 2;
+    }
+
+    .landing-mock .browser__body {
+      height: 491px;
+      padding: 28px;
+      background:
+        linear-gradient(135deg, rgba(15, 45, 107, 0.98), rgba(26, 86, 176, 0.92)),
+        #0F2D6B;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .landing-title {
+      margin-top: 38px;
+      font-size: 42px;
+      line-height: 0.96;
+      font-weight: 900;
+      color: #fff;
+      max-width: 330px;
+    }
+
+    .landing-copy {
+      margin-top: 20px;
+      width: 270px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 16px;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+
+    .mini-doc-stack {
+      position: absolute;
+      right: 26px;
+      bottom: 26px;
+      width: 190px;
+      height: 250px;
+    }
+
+    .mini-doc-stack span {
+      position: absolute;
+      inset: 0;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.2);
+    }
+
+    .mini-doc-stack span:nth-child(1) { transform: rotate(-9deg) translate(-26px, 6px); opacity: 0.45; }
+    .mini-doc-stack span:nth-child(2) { transform: rotate(-3deg) translate(-10px, 0); opacity: 0.7; }
+    .mini-doc-stack span:nth-child(3) {
+      padding: 26px 20px;
+      display: grid;
+      align-content: start;
+      gap: 13px;
+    }
+
+    .mini-doc-stack i,
+    .row-line {
+      display: block;
+      height: 11px;
+      border-radius: 999px;
+      background: #cbd8ee;
+    }
+
+    .mini-doc-stack i:first-child { width: 74px; background: var(--blue); }
+    .mini-doc-stack i:nth-child(2) { width: 130px; }
+    .mini-doc-stack i:nth-child(3) { width: 110px; }
+    .mini-doc-stack i:nth-child(4) { width: 145px; }
+
+    .dashboard-mock {
+      position: absolute;
+      left: 102px;
+      bottom: 142px;
+      width: 560px;
+      height: 360px;
+      z-index: 3;
+    }
+
+    .app-shell {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      background: #fff;
+    }
+
+    .app-nav {
+      background: #f4f7fb;
+      border-right: 1px solid var(--line);
+      padding: 24px 16px;
+      display: grid;
+      gap: 13px;
+      align-content: start;
+    }
+
+    .app-nav b {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: var(--blue);
+      margin-bottom: 14px;
+    }
+
+    .nav-pill {
+      height: 26px;
+      border-radius: 999px;
+      background: #dce6f7;
+    }
+
+    .nav-pill:nth-child(2) { background: var(--blue-soft); border: 1px solid #bfdbfe; }
+    .nav-pill:nth-child(4) { width: 78%; }
+    .nav-pill:nth-child(5) { width: 64%; }
+
+    .dash-body {
+      padding: 24px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .dash-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dash-head strong {
+      color: var(--blue-dark);
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .primary-pill {
+      width: 104px;
+      height: 30px;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .metric {
+      min-height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .metric b {
+      display: block;
+      margin-top: 8px;
+      color: var(--blue-dark);
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .doc-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      gap: 9px;
+      background: #fff;
+    }
+
+    .doc-card .row-line:nth-child(1) { width: 46%; background: var(--blue); }
+    .doc-card .row-line:nth-child(2) { width: 82%; }
+    .doc-card .row-line:nth-child(3) { width: 62%; }
+
+    .flow-mock {
+      position: absolute;
+      inset: 392px 60px 126px 60px;
+      display: grid;
+      grid-template-columns: 300px 272px 1fr;
+      gap: 22px;
+      z-index: 4;
+    }
+
+    .flow-card {
+      border-radius: 20px;
+      border: 1px solid rgba(15, 45, 107, 0.12);
+      background: rgba(255, 255, 255, 0.95);
+      padding: 22px;
+      box-shadow: 0 24px 60px rgba(15, 45, 107, 0.13);
+      min-width: 0;
+    }
+
+    .flow-label {
+      color: var(--blue);
+      font-size: 17px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .upload-zone {
+      margin-top: 20px;
+      height: 144px;
+      border: 2px dashed #bfdbfe;
+      border-radius: 18px;
+      background: #f8fbff;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--blue-dark);
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .upload-zone small {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .form-lines {
+      margin-top: 20px;
+      display: grid;
+      gap: 13px;
+    }
+
+    .input-row {
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #f9fbff;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #64748b;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .proposal-paper {
+      height: 100%;
+      border-radius: 20px;
+      padding: 28px 30px;
+      background: #fff;
+      box-shadow: 0 24px 60px rgba(15, 45, 107, 0.16);
+      border: 1px solid rgba(15, 45, 107, 0.12);
+    }
+
+    .proposal-paper h2 {
+      margin: 24px 0 24px;
+      color: var(--blue-dark);
+      font-size: 39px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .proposal-paper .row-line { margin-bottom: 13px; }
+    .proposal-paper .row-line:nth-child(1) { width: 82px; background: var(--blue); }
+    .proposal-paper .row-line:nth-child(3) { width: 92%; }
+    .proposal-paper .row-line:nth-child(4) { width: 78%; }
+    .proposal-paper .row-line:nth-child(5) { width: 88%; }
+    .proposal-paper table {
+      width: 100%;
+      margin-top: 26px;
+      border-collapse: collapse;
+      font-size: 16px;
+      color: #334155;
+      font-weight: 800;
+    }
+
+    .proposal-paper td {
+      padding: 12px 0;
+      border-bottom: 1px solid #e9eef7;
+    }
+
+    .proposal-paper td:last-child { text-align: right; color: var(--blue-dark); }
+
+    .ai-beam {
+      position: absolute;
+      left: 370px;
+      top: 548px;
+      width: 266px;
+      height: 20px;
+      background: linear-gradient(90deg, rgba(26, 86, 176, 0), rgba(26, 86, 176, 0.36), rgba(16, 185, 129, 0));
+      transform: rotate(-2deg);
+      z-index: 3;
+    }
+
+    .chat-layout {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 132px;
+      height: 565px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.82fr;
+      gap: 24px;
+      z-index: 4;
+    }
+
+    .chat-panel,
+    .brief-panel {
+      border-radius: 24px;
+      border: 1px solid rgba(15, 45, 107, 0.12);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 28px 70px rgba(15, 45, 107, 0.14);
+      padding: 24px;
+      min-width: 0;
+    }
+
+    .chat-panel {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+    }
+
+    .chat-head,
+    .brief-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .chat-head strong,
+    .brief-head strong {
+      color: var(--blue-dark);
+      font-size: 25px;
+      font-weight: 900;
+    }
+
+    .live-dot {
+      display: inline-flex;
+      width: 12px;
+      height: 12px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .message-stack {
+      display: grid;
+      align-content: end;
+      gap: 14px;
+    }
+
+    .msg {
+      max-width: 84%;
+      padding: 15px 18px;
+      border-radius: 18px;
+      font-size: 20px;
+      line-height: 1.23;
+      font-weight: 700;
+    }
+
+    .msg--ai {
+      background: var(--blue-soft);
+      color: var(--blue-dark);
+      border-top-left-radius: 6px;
+    }
+
+    .msg--user {
+      justify-self: end;
+      background: var(--blue);
+      color: #fff;
+      border-top-right-radius: 6px;
+    }
+
+    .composer {
+      min-height: 58px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #f8fbff;
+      padding: 0 16px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .send-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .brief-panel {
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .brief-section {
+      border-radius: 17px;
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      padding: 16px;
+    }
+
+    .brief-section span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .brief-section b {
+      display: block;
+      margin-top: 9px;
+      color: var(--blue-dark);
+      font-size: 24px;
+      line-height: 1.08;
+      font-weight: 900;
+    }
+
+    .brief-list {
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 9px;
+    }
+
+    .brief-list li {
+      color: #334155;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .brief-list li::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .workflow-board {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 128px;
+      height: 602px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 22px;
+      z-index: 4;
+    }
+
+    .workflow-card {
+      border-radius: 22px;
+      border: 1px solid rgba(15, 45, 107, 0.12);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 26px 64px rgba(15, 45, 107, 0.12);
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .workflow-card strong {
+      display: block;
+      color: var(--blue-dark);
+      font-size: 25px;
+      font-weight: 900;
+      margin-bottom: 16px;
+    }
+
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .tiny-card {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #f8fbff;
+      padding: 13px;
+      min-height: 102px;
+    }
+
+    .tiny-card b {
+      display: block;
+      color: var(--blue);
+      font-size: 17px;
+      line-height: 1.06;
+      font-weight: 900;
+    }
+
+    .tiny-card span {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.1;
+      font-weight: 700;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 0;
+      border-bottom: 1px solid #e9eef7;
+      font-size: 18px;
+      font-weight: 800;
+      color: #334155;
+    }
+
+    .status-pill {
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: #047857;
+      background: #d1fae5;
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .status-pill--review { color: #92400e; background: #fef3c7; }
+    .status-pill--draft { color: #475569; background: #e2e8f0; }
+
+    .price-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .price-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 14px;
+      border-radius: 13px;
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .price-line b { color: var(--blue-dark); }
+
+    .search-bar {
+      height: 48px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f8fbff;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      margin-bottom: 12px;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .launch-collage {
+      position: absolute;
+      inset: 322px 64px 122px 64px;
+      z-index: 4;
+    }
+
+    .launch-web {
+      position: absolute;
+      left: 0;
+      top: 52px;
+      width: 430px;
+      height: 338px;
+      transform: rotate(-3deg);
+    }
+
+    .launch-web .browser__body {
+      height: 284px;
+      padding: 26px;
+      background: linear-gradient(135deg, #0f2d6b, #1a56b0);
+      color: #fff;
+    }
+
+    .launch-web h2 {
+      margin: 26px 0 0;
+      color: #fff;
+      font-size: 42px;
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    .launch-app {
+      position: absolute;
+      left: 310px;
+      top: 0;
+      width: 515px;
+      height: 392px;
+      z-index: 3;
+      transform: rotate(2deg);
+    }
+
+    .launch-pdf {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 310px;
+      height: 430px;
+      border-radius: 24px;
+      padding: 28px 24px;
+      transform: rotate(5deg);
+      z-index: 4;
+    }
+
+    .launch-pdf h2 {
+      margin: 24px 0 20px;
+      color: var(--blue-dark);
+      font-size: 34px;
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .launch-phone {
+      position: absolute;
+      left: 58px;
+      bottom: 0;
+      width: 212px;
+      height: 358px;
+      border-radius: 34px;
+      padding: 18px;
+      transform: rotate(5deg);
+      z-index: 5;
+    }
+
+    .phone-screen {
+      height: 100%;
+      border-radius: 24px;
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      padding: 18px 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .phone-screen b {
+      color: var(--blue-dark);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .phone-card {
+      border-radius: 13px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 12px;
+    }
+
+    .phone-card span {
+      display: block;
+      height: 8px;
+      border-radius: 999px;
+      background: #cbd8ee;
+      margin-bottom: 8px;
+    }
+
+    .phone-card span:first-child { width: 70%; background: var(--blue); }
+    .phone-card span:nth-child(2) { width: 92%; }
+    .phone-card span:nth-child(3) { width: 56%; margin-bottom: 0; }
+
+    .cta-strip {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      bottom: 52px;
+      height: 62px;
+      border-radius: 999px;
+      background: var(--blue-dark);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 25px;
+      font-weight: 900;
+      box-shadow: 0 24px 62px rgba(15, 45, 107, 0.25);
+      z-index: 8;
+    }
+
+    .accent-note {
+      position: absolute;
+      right: 64px;
+      top: 274px;
+      width: 250px;
+      padding: 17px 20px;
+      border-radius: 20px;
+      background: var(--mint);
+      color: #047857;
+      border: 1px solid rgba(16, 185, 129, 0.22);
+      font-size: 22px;
+      line-height: 1.12;
+      font-weight: 900;
+      z-index: 7;
+      box-shadow: 0 20px 46px rgba(15, 45, 107, 0.1);
+    }
+
+    .post-2::after { background: radial-gradient(circle, rgba(16, 185, 129, 0.18), transparent 66%); }
+    .post-3 { background: linear-gradient(135deg, #fbfdff 0%, #edf7ff 50%, #e9fbf3 100%); }
+    .post-3::after { background: radial-gradient(circle, rgba(245, 158, 11, 0.18), transparent 66%); }
+    .post-4 { background: linear-gradient(135deg, #f8fbff 0%, #ecf3ff 52%, #fff3ed 100%); }
+    .post-5 { background: linear-gradient(135deg, #f9fbff 0%, #e7f0ff 42%, #f3fbef 100%); }
+
+    .post-1 .copy { width: 500px; }
+    .post-1 .landing-mock { top: 242px; width: 430px; height: 510px; }
+    .post-1 .landing-mock .browser__body { height: 456px; }
+    .post-1 .landing-title { font-size: 38px; }
+    .post-1 .landing-copy { width: 230px; font-size: 15px; }
+    .post-1 .dashboard-mock { bottom: 142px; }
+
+    .post-2 .flow-mock { inset: 468px 60px 126px 60px; }
+    .post-2 .copy p { width: 820px; }
+    .post-2 .proposal-paper h2 { font-size: 36px; }
+    .post-2 .upload-zone { height: 126px; }
+
+    .post-3 h1 { font-size: 58px; }
+    .post-3 .chat-layout { bottom: 158px; height: 430px; }
+    .post-3 .msg { font-size: 18px; }
+    .post-3 .brief-section b { font-size: 21px; }
+
+    .post-4 h1 { font-size: 58px; width: 760px; }
+    .post-4 .workflow-board { bottom: 150px; height: 480px; }
+    .post-4 .workflow-card { padding: 20px; }
+    .post-4 .workflow-card strong { font-size: 23px; }
+    .post-4 .tiny-card b { font-size: 16px; }
+    .post-4 .tiny-card span { font-size: 12px; }
+
+    .post-5 h1 { width: 680px; font-size: 58px; }
+    .post-5 .copy p { width: 620px; }
+    .post-5 .accent-note { top: 286px; }
+    .post-5 .launch-collage { inset: 430px 64px 122px 64px; }
+    .post-5 .launch-web { top: 16px; width: 400px; height: 310px; }
+    .post-5 .launch-web .browser__body { height: 256px; }
+    .post-5 .launch-web h2 { font-size: 35px; }
+    .post-5 .launch-app { left: 306px; width: 470px; height: 342px; }
+    .post-5 .launch-pdf { width: 288px; height: 392px; }
+    .post-5 .launch-phone { width: 194px; height: 322px; }
+
+    .post-6 {
+      background: linear-gradient(135deg, #f8fbff 0%, #e8f1ff 45%, #eefaf4 100%);
+    }
+
+    .post-6::after {
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.17), transparent 66%);
+    }
+
+    .post-6 h1 {
+      width: 760px;
+      font-size: 58px;
+    }
+
+    .post-6 .copy p {
+      width: 610px;
+    }
+
+    .macbook-scene {
+      position: absolute;
+      left: 64px;
+      right: 64px;
+      top: 455px;
+      height: 500px;
+      z-index: 4;
+    }
+
+    .macbook {
+      position: relative;
+      width: 918px;
+      height: 498px;
+      margin: 0 auto;
+      filter: drop-shadow(0 34px 60px rgba(15, 45, 107, 0.2));
+    }
+
+    .macbook__screen {
+      position: absolute;
+      left: 68px;
+      top: 0;
+      width: 782px;
+      height: 452px;
+      padding: 17px;
+      border-radius: 30px 30px 18px 18px;
+      background: linear-gradient(145deg, #172033, #070b12);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .macbook__camera {
+      position: absolute;
+      top: 7px;
+      left: 50%;
+      width: 8px;
+      height: 8px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: #0b1020;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      z-index: 2;
+    }
+
+    .macbook__display {
+      width: 100%;
+      height: 100%;
+      border-radius: 16px 16px 9px 9px;
+      overflow: hidden;
+      background: var(--blue-dark);
+      position: relative;
+    }
+
+    .macbook__base {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 68px;
+      border-radius: 8px 8px 38px 38px;
+      background: linear-gradient(180deg, #f8fafc, #cbd5e1);
+      border: 1px solid rgba(100, 116, 139, 0.28);
+      box-shadow: inset 0 4px 9px rgba(255, 255, 255, 0.8);
+    }
+
+    .macbook__base::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 164px;
+      height: 16px;
+      transform: translateX(-50%);
+      border-radius: 0 0 16px 16px;
+      background: linear-gradient(180deg, #cbd5e1, #e2e8f0);
+    }
+
+    .landing-screen {
+      height: 100%;
+      padding: 28px 34px;
+      color: #fff;
+      background:
+        radial-gradient(circle at 88% 18%, rgba(96, 165, 250, 0.52), transparent 30%),
+        radial-gradient(circle at 75% 86%, rgba(16, 185, 129, 0.28), transparent 28%),
+        linear-gradient(135deg, #0f2d6b, #1a56b0 58%, #123d8c);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .landing-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 36px 36px;
+      opacity: 0.7;
+    }
+
+    .landing-screen__nav,
+    .landing-screen__hero,
+    .landing-screen__aside {
+      position: relative;
+      z-index: 2;
+    }
+
+    .landing-screen__nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .landing-screen__nav img {
+      width: 142px;
+      height: auto;
+      display: block;
+    }
+
+    .landing-screen__links {
+      display: flex;
+      gap: 18px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .landing-screen__hero {
+      margin-top: 56px;
+      width: 440px;
+    }
+
+    .landing-screen__hero h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 55px;
+      line-height: 0.94;
+      letter-spacing: 0;
+      font-weight: 900;
+    }
+
+    .landing-screen__hero p {
+      margin: 18px 0 0;
+      width: 360px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .landing-screen__cta {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 22px;
+      padding: 11px 15px;
+      border-radius: 999px;
+      background: #fff;
+      color: var(--blue-dark);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .landing-screen__aside {
+      position: absolute;
+      right: 42px;
+      bottom: 44px;
+      width: 212px;
+      height: 260px;
+    }
+
+    .landing-screen__doc {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 24px 52px rgba(0, 0, 0, 0.25);
+      transform: rotate(5deg);
+      padding: 28px 22px;
+      display: grid;
+      align-content: start;
+      gap: 13px;
+    }
+
+    .landing-screen__doc span {
+      display: block;
+      height: 11px;
+      border-radius: 999px;
+      background: #c8d6ec;
+    }
+
+    .landing-screen__doc span:first-child {
+      width: 82px;
+      background: var(--blue);
+    }
+
+    .landing-screen__doc span:nth-child(2) { width: 144px; }
+    .landing-screen__doc span:nth-child(3) { width: 122px; }
+    .landing-screen__doc span:nth-child(4) { width: 154px; }
+
+    .landing-float {
+      position: absolute;
+      z-index: 3;
+      padding: 10px 13px;
+      border-radius: 999px;
+      color: var(--blue-dark);
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.16);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .landing-float--scope { right: 210px; top: 124px; }
+    .landing-float--price { right: 48px; top: 174px; }
+    .landing-float--review { right: 154px; bottom: 82px; }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="post post-1" data-name="01-founder-build-post">
+      <div class="topbar">
+        <img class="logo" src="../assets/logo.svg" alt="Propello" />
+        <span class="badge"><i></i> Beta testing</span>
+      </div>
+      <div class="copy">
+        <span class="eyebrow">App Builders PH</span>
+        <h1>I built Propello to make proposals less painful.</h1>
+        <p>Messy briefs, scattered notes, and scope details go into one AI-assisted workflow.</p>
+      </div>
+      <div class="browser landing-mock">
+        <div class="browser__bar"><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__url">propello.app</span></div>
+        <div class="browser__body">
+          <div class="landing-title">Draft winning proposals in under a minute.</div>
+          <div class="landing-copy">AI turns briefs, scope, pricing, and brand context into client-ready drafts.</div>
+          <div class="mini-doc-stack"><span></span><span></span><span><i></i><i></i><i></i><i></i></span></div>
+        </div>
+      </div>
+      <div class="browser dashboard-mock">
+        <div class="browser__bar"><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__url">My Workspace</span></div>
+        <div class="app-shell">
+          <div class="app-nav"><b></b><span class="nav-pill"></span><span class="nav-pill"></span><span class="nav-pill"></span><span class="nav-pill"></span></div>
+          <div class="dash-body">
+            <div class="dash-head"><strong>Welcome back</strong><span class="primary-pill"></span></div>
+            <div class="metric-grid"><div class="metric"><span>Draft speed</span><b>&lt; 1 min</b></div><div class="metric"><span>Review</span><b>Ready</b></div></div>
+            <div class="doc-card"><span class="row-line"></span><span class="row-line"></span><span class="row-line"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip">AI proposal generation</span>
+        <span class="chip">Dashboard + history</span>
+        <span class="chip">Launching soon</span>
+      </div>
+    </section>
+
+    <section class="post post-2" data-name="02-ai-proposal-drafting">
+      <div class="topbar">
+        <img class="logo" src="../assets/logo.svg" alt="Propello" />
+        <span class="badge"><i></i> Beta testing</span>
+      </div>
+      <div class="copy copy--wide">
+        <span class="eyebrow">AI proposal drafting</span>
+        <h1>From client brief to structured proposal draft.</h1>
+        <p>Upload the source, add confirmed details, then let AI organize the scope, timeline, cost, terms, and support.</p>
+      </div>
+      <span class="ai-beam"></span>
+      <div class="flow-mock">
+        <div class="flow-card">
+          <span class="flow-label">Step 1</span>
+          <div class="upload-zone">Drop a PDF<small>brief / RFP / notes</small></div>
+        </div>
+        <div class="flow-card">
+          <span class="flow-label">Step 2</span>
+          <div class="form-lines">
+            <div class="input-row"><span>Client</span><b>Acme Inc.</b></div>
+            <div class="input-row"><span>Budget</span><b>PHP</b></div>
+            <div class="input-row"><span>Timeline</span><b>8 weeks</b></div>
+            <div class="input-row"><span>Industry</span><b>IT Services</b></div>
+          </div>
+        </div>
+        <article class="proposal-paper">
+          <span class="row-line"></span>
+          <h2>Website Development Proposal</h2>
+          <span class="row-line"></span>
+          <span class="row-line"></span>
+          <span class="row-line"></span>
+          <table>
+            <tr><td>Discovery</td><td>PHP 45k</td></tr>
+            <tr><td>Implementation</td><td>PHP 180k</td></tr>
+            <tr><td>Launch support</td><td>PHP 35k</td></tr>
+          </table>
+        </article>
+      </div>
+      <div class="chips">
+        <span class="chip">10 proposal sections</span>
+        <span class="chip">Editable preview</span>
+        <span class="chip">Branded PDF export</span>
+        <span class="chip">Launching soon</span>
+      </div>
+    </section>
+
+    <section class="post post-3" data-name="03-ai-requirements-analyst">
+      <div class="topbar">
+        <img class="logo" src="../assets/logo.svg" alt="Propello" />
+        <span class="badge"><i></i> Beta testing</span>
+      </div>
+      <div class="copy copy--wide">
+        <span class="eyebrow">AI requirements analyst</span>
+        <h1>Before the proposal, clarify what the client actually needs.</h1>
+      </div>
+      <div class="chat-layout">
+        <div class="chat-panel">
+          <div class="chat-head"><strong><span class="live-dot"></span>Requirements chat</strong><span class="chip">AI</span></div>
+          <div class="message-stack">
+            <div class="msg msg--ai">Tell me what you want to build. I'll organize the requirements as we go.</div>
+            <div class="msg msg--user">We need a portal for clients, staff, approvals, and payment tracking.</div>
+            <div class="msg msg--ai">Got it. I'll clarify roles, core flows, reporting, integrations, and launch scope.</div>
+          </div>
+          <div class="composer"><span>Describe the project...</span><span class="send-dot">&uarr;</span></div>
+        </div>
+        <aside class="brief-panel">
+          <div class="brief-head"><strong>Live project brief</strong><span class="status-pill--review status-pill">Clearer</span></div>
+          <div class="brief-section">
+            <span>Project type</span>
+            <b>Client portal + internal workflow</b>
+          </div>
+          <div class="brief-section">
+            <span>Core needs</span>
+            <ul class="brief-list">
+              <li>Roles and permissions</li>
+              <li>Approval workflow</li>
+              <li>Dashboard reporting</li>
+              <li>System requirements output</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+      <div class="chips">
+        <span class="chip">Natural language intake</span>
+        <span class="chip">Client invite links</span>
+        <span class="chip">System requirements document</span>
+        <span class="chip">Launching soon</span>
+      </div>
+    </section>
+
+    <section class="post post-4" data-name="04-business-workflow">
+      <div class="topbar">
+        <img class="logo" src="../assets/logo.svg" alt="Propello" />
+        <span class="badge"><i></i> Beta testing</span>
+      </div>
+      <div class="copy copy--wide">
+        <span class="eyebrow">The workflow matters</span>
+        <h1>Propello is more than a proposal generator.</h1>
+      </div>
+      <div class="workflow-board">
+        <div class="workflow-card">
+          <strong>Templates + industry profiles</strong>
+          <div class="template-grid">
+            <div class="tiny-card"><b>Web Build</b><span>CMS, launch, analytics</span></div>
+            <div class="tiny-card"><b>Internal System</b><span>Roles, workflows, reports</span></div>
+            <div class="tiny-card"><b>Automation + AI</b><span>Review gates, prompts</span></div>
+          </div>
+        </div>
+        <div class="workflow-card">
+          <strong>Pricing + scope guardrails</strong>
+          <div class="price-list">
+            <div class="price-line"><span>Discovery</span><b>PHP 45,000</b></div>
+            <div class="price-line"><span>Build</span><b>PHP 180,000</b></div>
+            <div class="price-line"><span>Launch support</span><b>PHP 35,000</b></div>
+          </div>
+        </div>
+        <div class="workflow-card">
+          <strong>Review, approvals, versions</strong>
+          <div class="status-row"><span>Website proposal</span><span class="status-pill">Approved</span></div>
+          <div class="status-row"><span>AI workflow quote</span><span class="status-pill status-pill--review">Review</span></div>
+          <div class="status-row"><span>Invoice draft</span><span class="status-pill status-pill--draft">Draft</span></div>
+        </div>
+        <div class="workflow-card">
+          <strong>Documents that stay searchable</strong>
+          <div class="search-bar">Quick Search / Find in proposal</div>
+          <div class="doc-card"><span class="row-line"></span><span class="row-line"></span><span class="row-line"></span></div>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip">Invoices</span>
+        <span class="chip">Sharing + collaboration</span>
+        <span class="chip">Supabase-backed accounts</span>
+        <span class="chip">Launching soon</span>
+      </div>
+    </section>
+
+    <section class="post post-5" data-name="05-beta-launch-soon">
+      <div class="topbar">
+        <img class="logo" src="../assets/logo.svg" alt="Propello" />
+        <span class="badge"><i></i> Beta testing</span>
+      </div>
+      <div class="copy copy--wide">
+        <span class="eyebrow">Launching very soon</span>
+        <h1>Looking for beta testers from App Builders PH.</h1>
+        <p>I want feedback from people who build, sell, scope, and ship client work.</p>
+      </div>
+      <div class="accent-note">AI-assisted proposals for real service teams.</div>
+      <div class="launch-collage">
+        <div class="browser launch-web">
+          <div class="browser__bar"><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__url">www.propello.app</span></div>
+          <div class="browser__body"><span class="eyebrow" style="color:#bfdbfe;font-size:18px;margin:0;">Website</span><h2>Draft winning proposals in under a minute.</h2></div>
+        </div>
+        <div class="browser launch-app">
+          <div class="browser__bar"><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__dot"></span><span class="browser__url">Proposal Generator</span></div>
+          <div class="app-shell">
+            <div class="app-nav"><b></b><span class="nav-pill"></span><span class="nav-pill"></span><span class="nav-pill"></span></div>
+            <div class="dash-body">
+              <div class="dash-head"><strong>Generate proposal</strong><span class="primary-pill"></span></div>
+              <div class="doc-card"><span class="row-line"></span><span class="row-line"></span><span class="row-line"></span></div>
+              <div class="metric-grid"><div class="metric"><span>AI draft</span><b>Ready</b></div><div class="metric"><span>PDF</span><b>Export</b></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="phone launch-phone">
+          <div class="phone-screen"><b>Dashboard</b><div class="phone-card"><span></span><span></span><span></span></div><div class="phone-card"><span></span><span></span><span></span></div></div>
+        </div>
+        <article class="paper launch-pdf">
+          <span class="row-line" style="width:72px;background:var(--blue);"></span>
+          <h2>Client Portal Proposal</h2>
+          <span class="row-line" style="width:92%;"></span>
+          <span class="row-line" style="width:74%;"></span>
+          <span class="row-line" style="width:88%;"></span>
+          <table>
+            <tr><td>Scope</td><td>Ready</td></tr>
+            <tr><td>Timeline</td><td>8 weeks</td></tr>
+            <tr><td>Cost</td><td>PHP</td></tr>
+          </table>
+        </article>
+      </div>
+      <div class="cta-strip">Comment if you want beta access</div>
+    </section>
+
+    <section class="post post-6" data-name="06-landing-page-macbook">
+      <div class="topbar">
+        <img class="logo" src="../assets/logo.svg" alt="Propello" />
+        <span class="badge"><i></i> Beta testing</span>
+      </div>
+      <div class="copy copy--wide">
+        <span class="eyebrow">Landing page preview</span>
+        <h1>The Propello landing page is built around one promise.</h1>
+        <p>AI-assisted proposals that help service teams move from brief to client-ready draft faster.</p>
+      </div>
+      <div class="macbook-scene">
+        <div class="macbook" aria-hidden="true">
+          <div class="macbook__screen">
+            <span class="macbook__camera"></span>
+            <div class="macbook__display">
+              <div class="landing-screen">
+                <div class="landing-screen__nav">
+                  <img src="../assets/logo-light.svg" alt="" />
+                  <div class="landing-screen__links"><span>Solutions</span><span>Features</span><span>AI Power</span><span>Pricing</span></div>
+                </div>
+                <div class="landing-screen__hero">
+                  <h2>Draft winning proposals in under a minute.</h2>
+                  <p>Propello turns briefs, scope, pricing, and brand context into polished proposal drafts.</p>
+                  <span class="landing-screen__cta">Open app</span>
+                </div>
+                <div class="landing-screen__aside">
+                  <div class="landing-screen__doc"><span></span><span></span><span></span><span></span></div>
+                </div>
+                <span class="landing-float landing-float--scope">Scope locked</span>
+                <span class="landing-float landing-float--price">PHP pricing ready</span>
+                <span class="landing-float landing-float--review">Review approved</span>
+              </div>
+            </div>
+          </div>
+          <div class="macbook__base"></div>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip">Landing page</span>
+        <span class="chip">MacBook mockup</span>
+        <span class="chip">AI-first positioning</span>
+        <span class="chip">Launching soon</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

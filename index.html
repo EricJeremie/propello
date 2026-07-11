@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Propello — Proposal Generator</title>
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('pd-theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
   <!-- Auth gate: hide the app until we confirm a session, to avoid flashing
        the app before redirecting an unauthenticated visitor to login. -->
   <script>
@@ -17,7 +30,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=46" />
+  <link rel="stylesheet" href="styles.css?v=47" />
+  <link rel="stylesheet" href="theme.css?v=2" />
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -29,6 +43,16 @@
       <span class="appbar__title">Proposal Generator</span>
     </div>
     <div class="appbar__actions">
+      <button type="button" class="btn btn--ghost nav-link theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <span class="theme-toggle__label" data-theme-label>Dark mode</span>
+      </button>
       <button id="quickSearchBtn" class="btn btn--ghost nav-link btn--quicksearch" type="button" aria-label="Quick search">
         <span>Quick Search</span>
         <span class="btn__kbd">⌘K</span>
@@ -124,17 +148,60 @@
             </div>
           </div>
           <div class="field field--full"><label class="label">Your company (prepared by)</label><input id="f_myCompany" class="input" placeholder="e.g. PocketDevs" autocomplete="organization" /></div>
-          <div class="field field--full"><label class="label">Prepared by (signatory)</label><input id="f_signatory" class="input" placeholder="Your full name" autocomplete="name" /></div>
-          <div class="field field--full"><label class="label">Signatory title</label><input id="f_signatoryTitle" class="input" placeholder="e.g. Chief Executive Officer" /></div>
+          <div class="field field--full"><label class="label">Client signatory</label><input id="f_signatory" class="input" placeholder="Client's full name" autocomplete="off" /></div>
+          <div class="field field--full"><label class="label">Client signatory title</label><input id="f_signatoryTitle" class="input" placeholder="e.g. Program Manager" autocomplete="off" /></div>
         </div>
 
         <div class="field field--full">
           <label class="label">Budget <span class="label__opt">(optional, manual override)</span></label>
           <input id="f_budget" class="input" placeholder="e.g. Php 250,000 fixed fee" />
         </div>
-        <div class="field field--full">
-          <label class="label">Payment details <span class="label__opt">(optional, manual override)</span></label>
-          <textarea id="f_paymentDetails" class="input textarea" rows="2" placeholder="e.g. 50% upfront, 50% on completion via Bank Transfer."></textarea>
+        <div class="field field--full payment-details">
+          <label class="payment-toggle" for="f_includePaymentDetails">
+            <span>
+              <span class="payment-toggle__title">Add payment details</span>
+              <span class="payment-toggle__hint">Show bank account details in the proposal payment section.</span>
+            </span>
+            <input id="f_includePaymentDetails" type="checkbox" role="switch" aria-controls="paymentDetailsFields" aria-expanded="false" />
+            <span class="payment-toggle__track" aria-hidden="true"></span>
+          </label>
+          <div id="paymentDetailsFields" class="payment-details__fields" hidden>
+            <div class="payment-bank-preview" aria-live="polite">
+              <span id="paymentBankBadge" class="payment-bank-preview__badge">BPI</span>
+              <span>
+                <span id="paymentBankPreviewName" class="payment-bank-preview__name">Bank of the Philippine Islands</span>
+                <span class="payment-bank-preview__hint">This logo color appears in the proposal.</span>
+              </span>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label class="label">Bank Name</label>
+                <select id="f_paymentBank" class="input">
+                  <option value="bpi">Bank of the Philippine Islands (BPI)</option>
+                  <option value="bdo">BDO Unibank</option>
+                  <option value="metrobank">Metrobank</option>
+                  <option value="unionbank">UnionBank</option>
+                  <option value="gcash">GCash</option>
+                  <option value="maya">Maya</option>
+                  <option value="rcbc">RCBC</option>
+                  <option value="security-bank">Security Bank</option>
+                  <option value="custom">Other bank</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">Account Name</label>
+                <input id="f_paymentAccountName" class="input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
+              </div>
+              <div class="field field--full" id="paymentCustomBankField" hidden>
+                <label class="label">Custom bank name</label>
+                <input id="f_paymentCustomBank" class="input" placeholder="e.g. Philippine National Bank" />
+              </div>
+              <div class="field field--full">
+                <label class="label">Account Num.</label>
+                <input id="f_paymentAccountNumber" class="input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
+              </div>
+            </div>
+          </div>
         </div>
         <div class="field field--full">
           <label class="label">Extra instructions <span class="label__opt">(optional)</span></label>
@@ -155,13 +222,13 @@
         <div class="grid2">
           <div class="field"><label class="label">Client / company</label><input id="f_inv_client" class="input" placeholder="Acme Inc." /></div>
           <div class="field"><label class="label">Contact name</label><input id="f_inv_contact" class="input" placeholder="Jomar Mansilungan" /></div>
-          <div class="field field--full"><label class="label">Client TIN</label><input id="f_inv_clientTin" class="input" placeholder="000-000-000-000" /></div>
+          <div class="field field--full"><label class="label">Client TIN <span class="label__opt">(optional)</span></label><input id="f_inv_clientTin" class="input" placeholder="000-000-000-000" /></div>
         </div>
 
         <h3 class="card__subtitle">From</h3>
         <div class="grid2">
           <div class="field"><label class="label">Company</label><input id="f_inv_company" class="input" value="Propello" /></div>
-          <div class="field"><label class="label">Propello TIN</label><input id="f_inv_tin" class="input" placeholder="[TBD]" /></div>
+          <div class="field"><label class="label">Propello TIN <span class="label__opt">(optional)</span></label><input id="f_inv_tin" class="input" placeholder="[TBD]" /></div>
         </div>
 
         <h3 class="card__subtitle">Invoice info</h3>
@@ -214,9 +281,56 @@
           <span id="invoiceItemsTotal">0.00</span>
         </div>
 
-        <div class="field field--full">
-          <label class="label">Payment details <span class="label__opt">(optional)</span></label>
-          <textarea id="f_inv_paymentDetails" class="input textarea" rows="2" placeholder="e.g. Pay via Bank Transfer to BPI account 1234-5678-90."></textarea>
+        <div class="field field--full payment-details">
+          <label class="payment-toggle" for="f_inv_includePaymentDetails">
+            <span>
+              <span class="payment-toggle__title">Add payment details</span>
+              <span class="payment-toggle__hint">Show bank account details in the invoice payment section.</span>
+            </span>
+            <input id="f_inv_includePaymentDetails" type="checkbox" role="switch" aria-controls="invPaymentDetailsFields" aria-expanded="false" />
+            <span class="payment-toggle__track" aria-hidden="true"></span>
+          </label>
+          <div id="invPaymentDetailsFields" class="payment-details__fields" hidden>
+            <div class="payment-bank-preview" aria-live="polite">
+              <span id="invPaymentBankBadge" class="payment-bank-preview__badge">BPI</span>
+              <span>
+                <span id="invPaymentBankPreviewName" class="payment-bank-preview__name">Bank of the Philippine Islands</span>
+                <span class="payment-bank-preview__hint">This logo color appears in the invoice.</span>
+              </span>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label class="label">Bank Name</label>
+                <select id="f_inv_paymentBank" class="input">
+                  <option value="bpi">Bank of the Philippine Islands (BPI)</option>
+                  <option value="bdo">BDO Unibank</option>
+                  <option value="metrobank">Metrobank</option>
+                  <option value="unionbank">UnionBank</option>
+                  <option value="gcash">GCash</option>
+                  <option value="maya">Maya</option>
+                  <option value="rcbc">RCBC</option>
+                  <option value="security-bank">Security Bank</option>
+                  <option value="custom">Other bank</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label">Account Name</label>
+                <input id="f_inv_paymentAccountName" class="input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
+              </div>
+              <div class="field field--full" id="invPaymentCustomBankField" hidden>
+                <label class="label">Custom bank name</label>
+                <input id="f_inv_paymentCustomBank" class="input" placeholder="e.g. Philippine National Bank" />
+              </div>
+              <div class="field field--full">
+                <label class="label">Account Num.</label>
+                <input id="f_inv_paymentAccountNumber" class="input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
+              </div>
+              <div class="field field--full">
+                <label class="label">Additional payment note <span class="label__opt">(optional)</span></label>
+                <textarea id="f_inv_paymentDetails" class="input textarea" rows="2" placeholder="e.g. Please send proof of payment after transfer."></textarea>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -578,6 +692,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=46"></script>
+  <script type="module" src="app.js?v=48"></script>
 </body>
 </html>

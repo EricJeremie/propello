@@ -1,9 +1,23 @@
 'use strict';
 import { signOut, onAuthChange, getSession } from './supabase.js?v=28';
+import { initTheme } from './theme.js?v=1';
+
+const THEME_TOGGLE_ICONS = `
+  <svg class="theme-toggle__icon theme-toggle__icon--moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+  <svg class="theme-toggle__icon theme-toggle__icon--sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+  </svg>
+`;
 
 // Inject the full app shell: sidebar + mobile top bar
 export function initLayout({ activePage = '', onSettings = null } = {}) {
-  if (document.getElementById('appSidebar')) return;
+  if (document.getElementById('appSidebar')) {
+    initTheme();
+    return;
+  }
 
   // Mobile top bar (shown only on small screens)
   const mobileBar = document.createElement('div');
@@ -13,6 +27,9 @@ export function initLayout({ activePage = '', onSettings = null } = {}) {
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
+    </button>
+    <button type="button" class="app-mobile-bar__theme" data-theme-toggle aria-label="Toggle dark mode" aria-pressed="false">
+      ${THEME_TOGGLE_ICONS}
     </button>
     <img src="assets/logo.svg" alt="Propello" class="app-mobile-bar__logo" />
   `;
@@ -65,6 +82,10 @@ export function initLayout({ activePage = '', onSettings = null } = {}) {
       </a>
     </nav>
     <div class="app-sidebar__footer">
+      <button id="sidebarThemeBtn" type="button" class="app-sidebar__item app-sidebar__item--theme" data-theme-toggle aria-pressed="false" title="Toggle dark mode">
+        ${THEME_TOGGLE_ICONS}
+        <span class="app-sidebar__label theme-toggle__label" data-theme-label>Dark mode</span>
+      </button>
       <button id="sidebarSettingsBtn" type="button" class="app-sidebar__item" data-page="settings" title="Settings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span class="app-sidebar__label">Settings</span>
@@ -76,6 +97,7 @@ export function initLayout({ activePage = '', onSettings = null } = {}) {
     </div>
   `;
   document.body.appendChild(sidebar);
+  initTheme();
 
   // Collapsible sidebar (desktop) — persisted across pages
   const COLLAPSE_KEY = 'pd-sidebar-collapsed';

@@ -6,3 +6,5 @@ mcp/*.pyo
 mcp/*.pyd
 mcp/.env
 mcp/.env.*
+.vercel
+.env*
