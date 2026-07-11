@@ -434,84 +434,188 @@ function getPaymentBankConfig(bankId) {
   return PAYMENT_BANKS[bankId] || PAYMENT_BANKS.custom;
 }
 
-function paymentControlIds(scope = 'proposal') {
-  if (scope === 'invoice') {
-    return {
-      toggle: 'f_inv_includePaymentDetails',
-      fields: 'invPaymentDetailsFields',
-      bank: 'f_inv_paymentBank',
-      customBank: 'f_inv_paymentCustomBank',
-      accountName: 'f_inv_paymentAccountName',
-      accountNumber: 'f_inv_paymentAccountNumber',
-      badge: 'invPaymentBankBadge',
-      previewName: 'invPaymentBankPreviewName',
-      customField: 'invPaymentCustomBankField',
-    };
-  }
+function paymentControlConfig(scope = 'proposal') {
+  const invoice = scope === 'invoice';
   return {
-    toggle: 'f_includePaymentDetails',
-    fields: 'paymentDetailsFields',
-    bank: 'f_paymentBank',
-    customBank: 'f_paymentCustomBank',
-    accountName: 'f_paymentAccountName',
-    accountNumber: 'f_paymentAccountNumber',
-    badge: 'paymentBankBadge',
-    previewName: 'paymentBankPreviewName',
-    customField: 'paymentCustomBankField',
+    toggleId: invoice ? 'f_inv_includePaymentDetails' : 'f_includePaymentDetails',
+    fieldsId: invoice ? 'invPaymentDetailsFields' : 'paymentDetailsFields',
+    containerId: invoice ? 'invPaymentAccountsContainer' : 'paymentAccountsContainer',
+    addButtonId: invoice ? 'addInvPaymentAccountBtn' : 'addPaymentAccountBtn',
+    bankClass: invoice ? 'f_inv_paymentBank' : 'f_paymentBank',
+    customBankClass: invoice ? 'f_inv_paymentCustomBank' : 'f_paymentCustomBank',
+    accountNameClass: invoice ? 'f_inv_paymentAccountName' : 'f_paymentAccountName',
+    accountNumberClass: invoice ? 'f_inv_paymentAccountNumber' : 'f_paymentAccountNumber',
+    badgeClass: invoice ? 'invPaymentBankBadge' : 'paymentBankBadge',
+    previewNameClass: invoice ? 'invPaymentBankPreviewName' : 'paymentBankPreviewName',
+    customFieldClass: invoice ? 'invPaymentCustomBankField' : 'paymentCustomBankField',
+    label: invoice ? 'invoice' : 'proposal',
   };
 }
 
-function collectPaymentAccount(scope = 'proposal') {
-  const ids = paymentControlIds(scope);
-  const enabled = !!$(ids.toggle)?.checked;
-  const bankId = $(ids.bank)?.value || 'bpi';
-  const bankConfig = getPaymentBankConfig(bankId);
-  const customBank = $(ids.customBank)?.value.trim() || '';
-  const bankName = bankId === 'custom' ? customBank : bankConfig.bank;
-  return {
-    enabled,
-    bankId,
-    bankName,
-    accountName: $(ids.accountName)?.value.trim() || '',
-    accountNumber: $(ids.accountNumber)?.value.trim() || '',
-    badge: bankId === 'custom' && customBank ? customBank.slice(0, 4).toUpperCase() : bankConfig.badge,
-    color: bankConfig.color,
-  };
+function bankOptionsHtml() {
+  return `
+    <option value="bpi">Bank of the Philippine Islands (BPI)</option>
+    <option value="bdo">BDO Unibank</option>
+    <option value="metrobank">Metrobank</option>
+    <option value="unionbank">UnionBank</option>
+    <option value="gcash">GCash</option>
+    <option value="maya">Maya</option>
+    <option value="rcbc">RCBC</option>
+    <option value="security-bank">Security Bank</option>
+    <option value="custom">Other bank</option>`;
 }
 
-function updatePaymentBankPreview(scope = 'proposal') {
-  const ids = paymentControlIds(scope);
-  const bankId = $(ids.bank)?.value || 'bpi';
-  const customBank = $(ids.customBank)?.value.trim() || '';
-  const bankConfig = getPaymentBankConfig(bankId);
-  const bankName = bankId === 'custom' && customBank ? customBank : bankConfig.bank;
-  const badge = bankId === 'custom' && customBank ? customBank.slice(0, 4).toUpperCase() : bankConfig.badge;
-  const badgeEl = $(ids.badge);
-  const nameEl = $(ids.previewName);
-  const customField = $(ids.customField);
-  if (badgeEl) {
-    badgeEl.textContent = badge;
-    badgeEl.style.setProperty('--bank-color', bankConfig.color);
-  }
-  if (nameEl) nameEl.textContent = bankName;
-  if (customField) customField.hidden = bankId !== 'custom';
+function paymentEntryHtml(scope = 'proposal', index = 0, removable = true) {
+  const config = paymentControlConfig(scope);
+  const remove = removable
+    ? '<button type="button" class="payment-account-entry__remove" aria-label="Remove payment option">&times;</button>'
+    : '';
+  return `
+    <div class="payment-account-entry" data-account-index="${index}">
+      <div class="payment-account-entry__header">
+        <span class="payment-account-entry__label">Payment option ${index + 1}</span>
+        ${remove}
+      </div>
+      <div class="payment-bank-preview" aria-live="polite">
+        <span class="${config.badgeClass} payment-bank-preview__badge">BPI</span>
+        <span>
+          <span class="${config.previewNameClass} payment-bank-preview__name">Bank of the Philippine Islands (BPI)</span>
+          <span class="payment-bank-preview__hint">This logo color appears in the ${config.label}.</span>
+        </span>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label class="label">Bank Name</label>
+          <select class="${config.bankClass} input">${bankOptionsHtml()}</select>
+        </div>
+        <div class="field">
+          <label class="label">Account Name</label>
+          <input class="${config.accountNameClass} input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
+        </div>
+        <div class="field field--full ${config.customFieldClass}" hidden>
+          <label class="label">Custom bank name</label>
+          <input class="${config.customBankClass} input" placeholder="e.g. Philippine National Bank" />
+        </div>
+        <div class="field field--full">
+          <label class="label">Account Num.</label>
+          <input class="${config.accountNumberClass} input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
+        </div>
+      </div>
+    </div>`;
+}
+
+function collectPaymentAccounts(scope = 'proposal') {
+  const config = paymentControlConfig(scope);
+  const toggle = $(config.toggleId);
+  const container = $(config.containerId);
+  if (!toggle?.checked || !container) return [];
+  return Array.from(container.querySelectorAll('.payment-account-entry'))
+    .map((entry) => {
+      const bankSelector = entry.querySelector(`.${config.bankClass}`);
+      const accountNameField = entry.querySelector(`.${config.accountNameClass}`);
+      const accountNumberField = entry.querySelector(`.${config.accountNumberClass}`);
+      const customBankField = entry.querySelector(`.${config.customBankClass}`);
+      const bankId = bankSelector?.value || 'bpi';
+      const bankConfig = getPaymentBankConfig(bankId);
+      const customBank = customBankField?.value.trim() || '';
+      const bankName = bankId === 'custom' ? customBank : bankConfig.bank;
+      return {
+        enabled: true,
+        bankId,
+        bankName,
+        accountName: accountNameField?.value.trim() || '',
+        accountNumber: accountNumberField?.value.trim() || '',
+        badge: bankId === 'custom' && customBank ? customBank.slice(0, 4).toUpperCase() : bankConfig.badge,
+        color: bankConfig.color,
+      };
+    })
+    .filter((account) => account.accountName || account.accountNumber || account.bankName);
 }
 
 function syncPaymentDetailsFields(scope = 'proposal') {
-  const ids = paymentControlIds(scope);
-  const toggle = $(ids.toggle);
-  const fields = $(ids.fields);
+  const config = paymentControlConfig(scope);
+  const toggle = $(config.toggleId);
+  const fields = $(config.fieldsId);
+  const addBtn = $(config.addButtonId);
   if (!toggle || !fields) return;
   fields.hidden = !toggle.checked;
   toggle.setAttribute('aria-expanded', String(toggle.checked));
+  if (addBtn) addBtn.hidden = !toggle.checked;
+  updatePaymentBankPreview(scope);
+}
+
+function updatePaymentBankPreview(scope = 'proposal') {
+  const config = paymentControlConfig(scope);
+  const container = $(config.containerId);
+  if (!container) return;
+  const entries = container.querySelectorAll('.payment-account-entry');
+  entries.forEach((entry) => {
+    const bankSelector = entry.querySelector(`.${config.bankClass}`);
+    const customBankField = entry.querySelector(`.${config.customBankClass}`);
+    const badgeEl = entry.querySelector(`.${config.badgeClass}`);
+    const nameEl = entry.querySelector(`.${config.previewNameClass}`);
+    const customField = entry.querySelector(`.${config.customFieldClass}`);
+    const bankId = bankSelector?.value || 'bpi';
+    const customBank = customBankField?.value.trim() || '';
+    const bankConfig = getPaymentBankConfig(bankId);
+    const bankName = bankId === 'custom' && customBank ? customBank : bankConfig.bank;
+    const badge = bankId === 'custom' && customBank ? customBank.slice(0, 4).toUpperCase() : bankConfig.badge;
+
+    if (badgeEl) {
+      badgeEl.textContent = badge;
+      badgeEl.style.setProperty('--bank-color', bankConfig.color);
+    }
+    if (nameEl) nameEl.textContent = bankName;
+    if (customField) customField.hidden = bankId !== 'custom';
+  });
+}
+
+function reindexPaymentAccountEntries(scope = 'proposal') {
+  const config = paymentControlConfig(scope);
+  const container = $(config.containerId);
+  if (!container) return;
+  container.querySelectorAll('.payment-account-entry').forEach((entry, index) => {
+    entry.dataset.accountIndex = String(index);
+    const label = entry.querySelector('.payment-account-entry__label');
+    if (label) label.textContent = `Payment option ${index + 1}`;
+  });
+}
+
+function addPaymentAccountEntry(scope = 'proposal') {
+  const config = paymentControlConfig(scope);
+  const container = $(config.containerId);
+  if (!container) return;
+  const index = container.querySelectorAll('.payment-account-entry').length;
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = paymentEntryHtml(scope, index, true).trim();
+  const entry = wrapper.firstElementChild;
+  container.appendChild(entry);
+  reindexPaymentAccountEntries(scope);
   updatePaymentBankPreview(scope);
 }
 
 function initPaymentDetailsControls(scope = 'proposal') {
-  const ids = paymentControlIds(scope);
-  $(ids.toggle)?.addEventListener('change', () => syncPaymentDetailsFields(scope));
-  $(ids.bank)?.addEventListener('change', () => updatePaymentBankPreview(scope));
-  $(ids.customBank)?.addEventListener('input', () => updatePaymentBankPreview(scope));
+  const config = paymentControlConfig(scope);
+  const toggle = $(config.toggleId);
+  const addBtn = $(config.addButtonId);
+  const container = $(config.containerId);
+  toggle?.addEventListener('change', () => syncPaymentDetailsFields(scope));
+  addBtn?.addEventListener('click', () => addPaymentAccountEntry(scope));
+  container?.addEventListener('change', (e) => {
+    if (e.target.matches(`.${config.bankClass}`)) updatePaymentBankPreview(scope);
+  });
+  container?.addEventListener('input', (e) => {
+    if (e.target.matches(`.${config.customBankClass}`)) updatePaymentBankPreview(scope);
+  });
+  container?.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.payment-account-entry__remove');
+    if (!removeBtn) return;
+    e.preventDefault();
+    removeBtn.closest('.payment-account-entry')?.remove();
+    reindexPaymentAccountEntries(scope);
+    updatePaymentBankPreview(scope);
+  });
+  reindexPaymentAccountEntries(scope);
   syncPaymentDetailsFields(scope);
 }
 
@@ -547,7 +651,7 @@ function collectIntake() {
     signatoryTitle: $('f_signatoryTitle').value.trim() || $('f_contactTitle').value.trim(),
     notes: $('f_notes').value.trim(),
     budget: $('f_budget').value.trim(),
-    paymentAccount: collectPaymentAccount(),
+    paymentAccounts: collectPaymentAccounts(),
     proposalName: $('f_proposalName').value.trim(),
     internal: collectInternalControls(),
   };
@@ -567,7 +671,7 @@ function collectInvoiceIntake() {
     invoiceDate: $('f_inv_date').value.trim(),
     dueDate: $('f_inv_due').value.trim(),
     paymentDetails: $('f_inv_includePaymentDetails')?.checked ? ($('f_inv_paymentDetails')?.value.trim() || '') : '',
-    paymentAccount: collectPaymentAccount('invoice'),
+    paymentAccounts: collectPaymentAccounts('invoice'),
     invoiceName: $('f_inv_name').value.trim(),
   };
 }
@@ -1465,11 +1569,11 @@ async function generate() {
       clientSignatoryName: intake.signatory || intake.contactName || null,
       clientSignatoryTitle: intake.signatoryTitle || intake.contactTitle || null,
       budget: intake.budget || null,
-      paymentAccount: intake.paymentAccount?.enabled ? {
-        bankName: intake.paymentAccount.bankName || null,
-        accountName: intake.paymentAccount.accountName || null,
-        accountNumber: intake.paymentAccount.accountNumber || null,
-      } : null,
+      paymentAccounts: intake.paymentAccounts.map((account) => ({
+        bankName: account.bankName || null,
+        accountName: account.accountName || null,
+        accountNumber: account.accountNumber || null,
+      })),
     }, null, 2) +
     '\\n\\nINTERNAL TEMPLATE / REUSABLE BLOCKS / PRICING CONTEXT (JSON):\\n' + JSON.stringify(internalContext, null, 2) +
     '\\nUse this internal context to shape scope, wording, risk controls, and pricing tables when it is relevant. Do not expose the phrase "internal context" in the proposal.' +
@@ -1567,7 +1671,8 @@ async function generate() {
     if (proposal.meta) {
       proposal.meta.budget = intake.budget || '';
       proposal.meta.paymentDetails = '';
-      proposal.meta.paymentAccount = intake.paymentAccount?.enabled ? intake.paymentAccount : null;
+      proposal.meta.paymentAccount = null;
+      proposal.meta.paymentAccounts = intake.paymentAccounts;
       proposal.meta.clientSignatory = intake.signatory || intake.contactName || '';
       proposal.meta.clientSignatoryTitle = intake.signatoryTitle || intake.contactTitle || '';
       if (intake.proposalName) proposal.meta.title = intake.proposalName;
@@ -1649,7 +1754,7 @@ function formatAmount(n, prefix) {
 }
 
 function normalizePaymentAccount(account) {
-  if (!account || !account.enabled) return null;
+  if (!account || account.enabled === false) return null;
   const bankConfig = getPaymentBankConfig(account.bankId);
   const bank = account.bankName || bankConfig.bank;
   return {
@@ -1747,14 +1852,17 @@ function render(d) {
     sec.push(`<section class="p-section">${sectionHead(7, 'Milestones and Payment Terms')}
     <table class="p-table"><thead><tr><th>Milestone</th><th class="num">%</th><th class="num">Amount</th><th>Trigger</th></tr></thead><tbody>${mp}</tbody></table></section>`);
   }
-  const paymentAccount = normalizePaymentAccount(m.paymentAccount);
+  const rawPaymentAccounts = Array.isArray(m.paymentAccounts)
+    ? m.paymentAccounts
+    : (m.paymentAccount ? [m.paymentAccount] : []);
+  const paymentAccountsList = rawPaymentAccounts.map(normalizePaymentAccount).filter(Boolean);
   const paymentOptions = Array.isArray(d.paymentOptions) ? d.paymentOptions : [];
   if (m.paymentDetails) {
     sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div></section>`);
   } else {
-    const accountIntro = paymentAccount ? '<div class="p-lede"><p>Payment can be made through the following account.</p></div>' : '';
+    const accountIntro = paymentAccountsList.length ? '<div class="p-lede"><p>Payment can be made through the following account(s).</p></div>' : '';
     const optionsList = paymentOptions.length ? list(paymentOptions) : '<div class="p-lede"><p>Payment method to be confirmed.</p></div>';
-    sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}${accountIntro}${paymentAccounts(paymentAccount ? [paymentAccount] : [])}${optionsList}</section>`);
+    sec.push(`<section class="p-section">${sectionHead(8, 'Payment Options')}${accountIntro}${paymentAccounts(paymentAccountsList)}${optionsList}</section>`);
   }
   const pls = d.postLaunchSupport || {};
   sec.push(`<section class="p-section">${sectionHead(9, 'Post Launch Support')}${paras(pls.summary)}${list(pls.inclusions, 'p-list--check')}</section>`);
@@ -1886,18 +1994,21 @@ function renderInvoice(d) {
     <table class="p-table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
     <tbody>${rows}<tr class="p-table__total"><td colspan="3">Total</td><td class="num">${formatAmount(total, prefix)}</td></tr></tbody></table></section>`;
 
-  const paymentAccount = normalizePaymentAccount(m.paymentAccount);
+  const rawPaymentAccounts = Array.isArray(m.paymentAccounts)
+    ? m.paymentAccounts
+    : (m.paymentAccount ? [m.paymentAccount] : []);
+  const paymentAccountsList = rawPaymentAccounts.map(normalizePaymentAccount).filter(Boolean);
   const paymentDetails = m.paymentDetails
     ? `<div class="p-lede"><p>${esc(m.paymentDetails)}</p></div>`
     : '';
-  const paymentIntro = paymentAccount ? '<div class="p-lede"><p>Payment can be made through the following account.</p></div>' : '';
-  const paymentFallback = !paymentDetails && !paymentAccount ? '<div class="p-lede"><p>Payment details to be confirmed.</p></div>' : '';
+  const paymentIntro = paymentAccountsList.length ? '<div class="p-lede"><p>Payment can be made through the following account(s).</p></div>' : '';
+  const paymentFallback = !paymentDetails && !paymentAccountsList.length ? '<div class="p-lede"><p>Payment details to be confirmed.</p></div>' : '';
   const paymentSection = `
     <section class="p-section">
       ${sectionHead(2, 'Payment Details')}
       ${paymentDetails}
       ${paymentIntro}
-      ${paymentAccounts(paymentAccount ? [paymentAccount] : [])}
+      ${paymentAccounts(paymentAccountsList)}
       ${paymentFallback}
       ${Array.isArray(d.paymentOptions) && d.paymentOptions.length ? list(d.paymentOptions) : ''}
     </section>`;
@@ -1936,7 +2047,7 @@ async function generateInvoice() {
       currencySymbol: intake.currencySymbol,
       locale: intake.locale,
       paymentDetails: intake.paymentDetails,
-      paymentAccount: intake.paymentAccount?.enabled ? intake.paymentAccount : null,
+      paymentAccounts: intake.paymentAccounts.filter(a => a.enabled),
     },
     client: { company: intake.client, contactName: intake.contact, tin: intake.clientTin || '[TBD]' },
     preparedBy: { company: intake.company, tin: intake.tin || '[TBD]' },

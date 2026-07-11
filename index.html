@@ -166,41 +166,52 @@
             <span class="payment-toggle__track" aria-hidden="true"></span>
           </label>
           <div id="paymentDetailsFields" class="payment-details__fields" hidden>
-            <div class="payment-bank-preview" aria-live="polite">
-              <span id="paymentBankBadge" class="payment-bank-preview__badge">BPI</span>
-              <span>
-                <span id="paymentBankPreviewName" class="payment-bank-preview__name">Bank of the Philippine Islands</span>
-                <span class="payment-bank-preview__hint">This logo color appears in the proposal.</span>
-              </span>
+            <div id="paymentAccountsContainer">
+              <div class="payment-account-entry" data-account-index="0">
+                <div class="payment-account-entry__header">
+                  <span class="payment-account-entry__label">Payment option 1</span>
+                </div>
+                <div class="payment-bank-preview" aria-live="polite">
+                  <span class="paymentBankBadge payment-bank-preview__badge">BPI</span>
+                  <span>
+                    <span class="paymentBankPreviewName payment-bank-preview__name">Bank of the Philippine Islands</span>
+                    <span class="payment-bank-preview__hint">This logo color appears in the proposal.</span>
+                  </span>
+                </div>
+                <div class="grid2">
+                  <div class="field">
+                    <label class="label">Bank Name</label>
+                    <select class="f_paymentBank input">
+                      <option value="bpi">Bank of the Philippine Islands (BPI)</option>
+                      <option value="bdo">BDO Unibank</option>
+                      <option value="metrobank">Metrobank</option>
+                      <option value="unionbank">UnionBank</option>
+                      <option value="gcash">GCash</option>
+                      <option value="maya">Maya</option>
+                      <option value="rcbc">RCBC</option>
+                      <option value="security-bank">Security Bank</option>
+                      <option value="custom">Other bank</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label">Account Name</label>
+                    <input class="f_paymentAccountName input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
+                  </div>
+                  <div class="field field--full paymentCustomBankField" hidden>
+                    <label class="label">Custom bank name</label>
+                    <input class="f_paymentCustomBank input" placeholder="e.g. Philippine National Bank" />
+                  </div>
+                  <div class="field field--full">
+                    <label class="label">Account Num.</label>
+                    <input class="f_paymentAccountNumber input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="grid2">
-              <div class="field">
-                <label class="label">Bank Name</label>
-                <select id="f_paymentBank" class="input">
-                  <option value="bpi">Bank of the Philippine Islands (BPI)</option>
-                  <option value="bdo">BDO Unibank</option>
-                  <option value="metrobank">Metrobank</option>
-                  <option value="unionbank">UnionBank</option>
-                  <option value="gcash">GCash</option>
-                  <option value="maya">Maya</option>
-                  <option value="rcbc">RCBC</option>
-                  <option value="security-bank">Security Bank</option>
-                  <option value="custom">Other bank</option>
-                </select>
-              </div>
-              <div class="field">
-                <label class="label">Account Name</label>
-                <input id="f_paymentAccountName" class="input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
-              </div>
-              <div class="field field--full" id="paymentCustomBankField" hidden>
-                <label class="label">Custom bank name</label>
-                <input id="f_paymentCustomBank" class="input" placeholder="e.g. Philippine National Bank" />
-              </div>
-              <div class="field field--full">
-                <label class="label">Account Num.</label>
-                <input id="f_paymentAccountNumber" class="input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
-              </div>
-            </div>
+            <button type="button" id="addPaymentAccountBtn" class="btn btn--ghost btn--sm btn--block payment-add-btn" hidden>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Add another payment option
+            </button>
           </div>
         </div>
         <div class="field field--full">
@@ -291,44 +302,55 @@
             <span class="payment-toggle__track" aria-hidden="true"></span>
           </label>
           <div id="invPaymentDetailsFields" class="payment-details__fields" hidden>
-            <div class="payment-bank-preview" aria-live="polite">
-              <span id="invPaymentBankBadge" class="payment-bank-preview__badge">BPI</span>
-              <span>
-                <span id="invPaymentBankPreviewName" class="payment-bank-preview__name">Bank of the Philippine Islands</span>
-                <span class="payment-bank-preview__hint">This logo color appears in the invoice.</span>
-              </span>
+            <div id="invPaymentAccountsContainer">
+              <div class="payment-account-entry" data-account-index="0">
+                <div class="payment-account-entry__header">
+                  <span class="payment-account-entry__label">Payment option 1</span>
+                </div>
+                <div class="payment-bank-preview" aria-live="polite">
+                  <span class="invPaymentBankBadge payment-bank-preview__badge">BPI</span>
+                  <span>
+                    <span class="invPaymentBankPreviewName payment-bank-preview__name">Bank of the Philippine Islands</span>
+                    <span class="payment-bank-preview__hint">This logo color appears in the invoice.</span>
+                  </span>
+                </div>
+                <div class="grid2">
+                  <div class="field">
+                    <label class="label">Bank Name</label>
+                    <select class="f_inv_paymentBank input">
+                      <option value="bpi">Bank of the Philippine Islands (BPI)</option>
+                      <option value="bdo">BDO Unibank</option>
+                      <option value="metrobank">Metrobank</option>
+                      <option value="unionbank">UnionBank</option>
+                      <option value="gcash">GCash</option>
+                      <option value="maya">Maya</option>
+                      <option value="rcbc">RCBC</option>
+                      <option value="security-bank">Security Bank</option>
+                      <option value="custom">Other bank</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label class="label">Account Name</label>
+                    <input class="f_inv_paymentAccountName input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
+                  </div>
+                  <div class="field field--full invPaymentCustomBankField" hidden>
+                    <label class="label">Custom bank name</label>
+                    <input class="f_inv_paymentCustomBank input" placeholder="e.g. Philippine National Bank" />
+                  </div>
+                  <div class="field field--full">
+                    <label class="label">Account Num.</label>
+                    <input class="f_inv_paymentAccountNumber input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="grid2">
-              <div class="field">
-                <label class="label">Bank Name</label>
-                <select id="f_inv_paymentBank" class="input">
-                  <option value="bpi">Bank of the Philippine Islands (BPI)</option>
-                  <option value="bdo">BDO Unibank</option>
-                  <option value="metrobank">Metrobank</option>
-                  <option value="unionbank">UnionBank</option>
-                  <option value="gcash">GCash</option>
-                  <option value="maya">Maya</option>
-                  <option value="rcbc">RCBC</option>
-                  <option value="security-bank">Security Bank</option>
-                  <option value="custom">Other bank</option>
-                </select>
-              </div>
-              <div class="field">
-                <label class="label">Account Name</label>
-                <input id="f_inv_paymentAccountName" class="input" placeholder="e.g. PocketDevs Solutions" autocomplete="organization" />
-              </div>
-              <div class="field field--full" id="invPaymentCustomBankField" hidden>
-                <label class="label">Custom bank name</label>
-                <input id="f_inv_paymentCustomBank" class="input" placeholder="e.g. Philippine National Bank" />
-              </div>
-              <div class="field field--full">
-                <label class="label">Account Num.</label>
-                <input id="f_inv_paymentAccountNumber" class="input" placeholder="e.g. 1234-5678-90" inputmode="numeric" autocomplete="off" />
-              </div>
-              <div class="field field--full">
-                <label class="label">Additional payment note <span class="label__opt">(optional)</span></label>
-                <textarea id="f_inv_paymentDetails" class="input textarea" rows="2" placeholder="e.g. Please send proof of payment after transfer."></textarea>
-              </div>
+            <button type="button" id="addInvPaymentAccountBtn" class="btn btn--ghost btn--sm btn--block payment-add-btn" hidden>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Add another payment option
+            </button>
+            <div class="field field--full">
+              <label class="label">Additional payment note <span class="label__opt">(optional)</span></label>
+              <textarea id="f_inv_paymentDetails" class="input textarea" rows="2" placeholder="e.g. Please send proof of payment after transfer."></textarea>
             </div>
           </div>
         </div>

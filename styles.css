@@ -472,6 +472,13 @@ button, input, textarea, select { font-family: inherit; }
   color: var(--text-muted);
   font-size: 0.68rem;
 }
+.payment-account-entry { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border); }
+.payment-account-entry:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+.payment-account-entry__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.payment-account-entry__label { font-size: 0.78rem; font-weight: 700; color: var(--text-muted); }
+.payment-account-entry__remove { background: none; border: none; font-size: 1.1rem; color: var(--text-muted); cursor: pointer; padding: 0.2rem; line-height: 1; opacity: 0.5; }
+.payment-account-entry__remove:hover { opacity: 1; color: var(--rausch); }
+.payment-add-btn { margin-top: 0.5rem; }
 .check { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; }
 .rule { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
 
