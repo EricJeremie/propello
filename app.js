@@ -297,9 +297,13 @@ const APPROVAL_LABELS = {
   review: 'In review',
   approved: 'Approved',
 };
+const AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;
 
 let selectedBlockIds = new Set();
 let workflowDirty = false;
+let documentRevision = 0;
+let autosaveTimer = null;
+let saveInFlight = null;
 let currentSession = null;
 
 /* ---------- Status ---------- */
@@ -995,25 +999,57 @@ function activeProposalContent() {
   return collab.content && collab.content.docType !== 'invoice' ? collab.content : null;
 }
 
+function activeDocumentContent() {
+  return collab.content || null;
+}
+
 function captureCurrentDocHtml() {
-  const content = activeProposalContent();
+  const content = activeDocumentContent();
   const art = $('proposal');
   if (!content || !art || $('emptyState')) return;
   content.collabHtml = art.innerHTML;
 }
 
+function clearAutosaveTimer() {
+  if (!autosaveTimer) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = null;
+}
+
+function setAutosaveStatus(state, message) {
+  const status = $('autosaveStatus');
+  if (!status) return;
+  status.hidden = !activeDocumentContent();
+  status.dataset.state = state || 'idle';
+  status.textContent = message || '';
+}
+
+function scheduleAutosave() {
+  if (!workflowDirty || !activeDocumentContent() || autosaveTimer) return;
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    if (workflowDirty && activeDocumentContent()) {
+      saveCurrentDocument({ toast: false, source: 'autosave' });
+    }
+  }, AUTOSAVE_INTERVAL_MS);
+}
+
 function markWorkflowDirty() {
-  if (!activeProposalContent()) return;
+  if (!activeDocumentContent()) return;
+  documentRevision += 1;
   workflowDirty = true;
   updateSaveButton();
+  setAutosaveStatus('pending', 'Unsaved changes');
+  scheduleAutosave();
 }
 
 function updateSaveButton() {
   const btn = $('saveDocBtn');
   if (!btn) return;
-  const canSave = !!activeProposalContent() && !collab.isGuest;
+  const canSave = !!activeDocumentContent() && !collab.isGuest;
   btn.hidden = !canSave;
-  btn.textContent = workflowDirty ? 'Save*' : 'Save';
+  btn.textContent = workflowDirty ? 'Save now' : 'Saved';
+  btn.title = workflowDirty ? 'Save changes now' : 'Changes autosave every 5 minutes';
 }
 
 function renderTemplateOptions() {
@@ -1390,32 +1426,70 @@ function applyWorkflowControlsToContent() {
   return content;
 }
 
-async function saveCurrentDocument({ toast = true } = {}) {
-  const content = activeProposalContent();
-  if (!content) { if (toast) showToast('Open a proposal first.', 'error'); return false; }
-  if (collab.isGuest) {
-    await persistDoc();
-    workflowDirty = false;
-    updateSaveButton();
-    if (toast) showToast('Shared document saved.');
+async function saveCurrentDocument({ toast = true, source = 'manual' } = {}) {
+  const content = activeDocumentContent();
+  if (!content) { if (toast) showToast('Open a proposal or invoice first.', 'error'); return false; }
+  if (saveInFlight) return saveInFlight;
+
+  const revisionAtSave = documentRevision;
+  const noun = content.docType === 'invoice' ? 'Invoice' : 'Proposal';
+  clearAutosaveTimer();
+  setAutosaveStatus('saving', 'Saving…');
+
+  saveInFlight = (async () => {
+    let data;
+    let error;
+    if (collab.isGuest) {
+      const saved = await persistDoc({ updateSaveState: false });
+      if (!saved) error = { message: 'Could not save the shared document.' };
+    } else {
+      if (content.docType === 'invoice') captureCurrentDocHtml();
+      else applyWorkflowControlsToContent();
+      ({ data, error } = await saveProposal(content));
+    }
+
+    if (error) {
+      if (error === 'not-authenticated') showAuthModal();
+      if (content === activeDocumentContent()) {
+        setAutosaveStatus('error', source === 'manual' ? 'Save failed — retrying' : 'Autosave failed — retrying');
+        scheduleAutosave();
+      }
+      if (toast) showToast(error.message || String(error), 'error');
+      return false;
+    }
+
+    if (content === activeDocumentContent()) {
+      const id = data && data[0] && data[0].id;
+      if (id && !collab.id) collab.id = id;
+      if (revisionAtSave === documentRevision) {
+        workflowDirty = false;
+        clearAutosaveTimer();
+        setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+      } else {
+        setAutosaveStatus('pending', 'Unsaved changes');
+        scheduleAutosave();
+      }
+      updateSaveButton();
+      updateShareButton();
+      refreshHistory();
+      if ($('dashboardModal')?.classList.contains('modal--visible')) refreshDashboard();
+    }
+    if (toast) showToast(collab.isGuest ? 'Shared document saved.' : `${noun} saved.`);
     return true;
+  })();
+
+  try {
+    return await saveInFlight;
+  } finally {
+    saveInFlight = null;
   }
-  applyWorkflowControlsToContent();
-  const { data, error } = await saveProposal(content);
-  if (error) {
-    if (error === 'not-authenticated') showAuthModal();
-    if (toast) showToast(error.message || String(error), 'error');
-    return false;
-  }
-  const id = data && data[0] && data[0].id;
-  if (id && !collab.id) collab.id = id;
-  workflowDirty = false;
-  updateSaveButton();
-  updateShareButton();
-  refreshHistory();
-  if ($('dashboardModal')?.classList.contains('modal--visible')) refreshDashboard();
-  if (toast) showToast('Proposal saved.');
-  return true;
+}
+
+async function savePendingBeforeDocumentChange() {
+  if (!workflowDirty || !activeDocumentContent()) return true;
+  const saved = await saveCurrentDocument({ toast: false, source: 'switch' });
+  if (!saved) showToast('Could not autosave your current document. Try saving again before switching.', 'error');
+  return saved;
 }
 
 function addVersionSnapshot(label, summary = '', options = {}) {
@@ -1432,9 +1506,8 @@ function addVersionSnapshot(label, summary = '', options = {}) {
     html: content.collabHtml || getDocHtml(),
   };
   internal.versions = [version, ...internal.versions].slice(0, MAX_VERSIONS);
-  workflowDirty = true;
+  markWorkflowDirty();
   renderVersionList();
-  updateSaveButton();
   if (options.toast !== false) showToast('Snapshot saved.');
   if (options.persist) saveCurrentDocument({ toast: false });
 }
@@ -1516,6 +1589,7 @@ async function generate() {
     setStatus('error', 'Drop a PDF brief, or fill in at least the company/project details.');
     return;
   }
+  if (!await savePendingBeforeDocumentChange()) return;
 
   // Give this generation its own saved record: pick a doc number that isn't
   // already used by an existing proposal, so the immediate auto-save creates a
@@ -1708,11 +1782,13 @@ async function generate() {
       if (!saveErr) {
         savedOk = true;
         setActiveDoc({ id: data && data[0] && data[0].id, content: proposal, token: null });
+        setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
         refreshHistory();
       } else if (saveErr !== 'not-authenticated' && saveErr !== 'offline') {
         console.warn('Could not save proposal to history:', saveErr);
       }
     } catch (e) { /* history is optional — ignore */ }
+    if (!savedOk) markWorkflowDirty();
     setStatus('ok', savedOk
       ? 'Proposal generated and saved to your documents. Click any text to edit, then <b>Download PDF</b>.'
       : 'Proposal generated! Click any text to edit, then <b>Download PDF</b>.');
@@ -2034,6 +2110,7 @@ async function generateInvoice() {
     setStatus('error', 'Fill in the client details or add at least one line item.');
     return;
   }
+  if (!await savePendingBeforeDocumentChange()) return;
 
   const total = items.reduce((sum, i) => sum + i.amount, 0);
   const data = {
@@ -2071,11 +2148,13 @@ async function generateInvoice() {
     if (!saveErr) {
       savedOk = true;
       setActiveDoc({ id: saved && saved[0] && saved[0].id, content: data, token: null });
+      setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
       refreshHistory();
     } else if (saveErr !== 'not-authenticated' && saveErr !== 'offline') {
       console.warn('Could not save invoice to history:', saveErr);
     }
   } catch (e) { /* history is optional — ignore */ }
+  if (!savedOk) markWorkflowDirty();
 
   setStatus('ok', savedOk
     ? 'Invoice generated and saved to your documents. Click any text to edit, then <b>Download PDF</b>.'
@@ -2112,6 +2191,7 @@ async function generateInvoice() {
       restoreSelection();
       document.execCommand(btn.dataset.cmd, false, null);
       saveSelection();
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true }));
       updateToolbarState();
     });
   });
@@ -2123,6 +2203,7 @@ async function generateInvoice() {
       restoreSelection();
       document.execCommand(sel.dataset.cmd, false, sel.value);
       saveSelection();
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true }));
       updateToolbarState();
     });
   });
@@ -2134,6 +2215,7 @@ async function generateInvoice() {
       restoreSelection();
       document.execCommand(inp.dataset.cmd, false, inp.value);
       saveSelection();
+      editor.dispatchEvent(new InputEvent('input', { bubbles: true }));
       updateToolbarState();
     });
   });
@@ -2622,11 +2704,14 @@ function shareUrl(token) {
 
 // Remember the doc now on screen so it can be shared / synced.
 function setActiveDoc({ id, content, token }) {
+  clearAutosaveTimer();
   collab.id = id || null;
   collab.content = content || null;
   collab.token = token || null;
   collab.isShared = !!token;
   workflowDirty = false;
+  documentRevision = 0;
+  setAutosaveStatus('idle', collab.content ? 'Autosave every 5 min' : '');
   updateShareButton();
   hydrateInternalUi();
 }
@@ -2663,16 +2748,35 @@ function onLocalEdit() {
   scheduleCursorRender();
 }
 
-async function persistDoc() {
+async function persistDoc({ updateSaveState = true } = {}) {
   if (!collab.content) return;
-  collab.content.collabHtml = getDocHtml();
+  const content = collab.content;
+  const revisionAtSave = documentRevision;
+  content.collabHtml = getDocHtml();
   try {
+    let result;
     if (collab.isGuest && collab.token) {
-      await saveSharedDoc(collab.token, collab.content);
+      result = await saveSharedDoc(collab.token, content);
     } else if (collab.isShared && collab.id) {
-      await saveProposal(collab.content);
+      result = await saveProposal(content);
+    } else {
+      return false;
     }
-  } catch { /* best effort */ }
+    if (result && (result.error || result.ok === false)) return false;
+    if (updateSaveState && content === activeDocumentContent() && revisionAtSave === documentRevision) {
+      workflowDirty = false;
+      clearAutosaveTimer();
+      updateSaveButton();
+      setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+    }
+    return true;
+  } catch {
+    if (updateSaveState && content === activeDocumentContent() && workflowDirty) {
+      setAutosaveStatus('error', 'Autosave failed — retrying');
+      scheduleAutosave();
+    }
+    return false;
+  }
 }
 
 let _editListenerAttached = false;
@@ -3177,6 +3281,7 @@ function openDocument(content) {
    wiring up live sync if it's already being shared. */
 async function loadOwnedDoc(row) {
   if (!row || !row.content) return;
+  if (row.id !== collab.id && !await savePendingBeforeDocumentChange()) return;
   openDocument(row.content);
   setActiveDoc({ id: row.id, content: row.content, token: row.share_token });
   if (row.share_token) await joinCollab();
@@ -3980,5 +4085,13 @@ function init() {
 
 // Leave the realtime channel cleanly when the tab closes.
 window.addEventListener('beforeunload', () => { try { leaveCollab(); } catch { /* ignore */ } });
+
+// Browsers may pause timers in background tabs. Save pending edits as soon as
+// the page is hidden so the five-minute autosave remains a maximum wait.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && workflowDirty && activeDocumentContent()) {
+    saveCurrentDocument({ toast: false, source: 'visibility' });
+  }
+});
 
 document.addEventListener('DOMContentLoaded', init);

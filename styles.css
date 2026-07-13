@@ -44,6 +44,18 @@ button, input, textarea, select { font-family: inherit; }
 .appbar__divider { width: 1px; height: 22px; background: var(--border); }
 .appbar__title { font-weight: 700; font-size: 0.875rem; letter-spacing: -0.01em; color: var(--text); }
 .appbar__actions { display: flex; gap: 0.5rem; align-items: center; }
+.autosave-status {
+  color: var(--text-muted); font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+}
+.autosave-status::before {
+  content: ''; display: inline-block; width: 0.42rem; height: 0.42rem;
+  margin-right: 0.35rem; border-radius: 50%; background: #94a3b8; vertical-align: 0.08rem;
+}
+.autosave-status[data-state="pending"]::before { background: #f59e0b; }
+.autosave-status[data-state="saving"]::before { background: var(--rausch); }
+.autosave-status[data-state="saved"]::before { background: #16a34a; }
+.autosave-status[data-state="error"] { color: #b91c1c; }
+.autosave-status[data-state="error"]::before { background: #dc2626; }
 
 .layout { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); align-items: start; min-height: calc(100vh - var(--appbar-h)); }
 .composer {
@@ -1231,6 +1243,7 @@ button, input, textarea, select { font-family: inherit; }
   /* hide nav link buttons, show hamburger */
   .appbar__hamburger { display: flex; align-items: center; }
   .appbar__actions .nav-link { display: none; }
+  .autosave-status { display: none; }
   .appbar__greeting { display: none; }
   .composer { padding: 1rem; }
   .grid2 { grid-template-columns: 1fr; }
