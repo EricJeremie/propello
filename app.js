@@ -1003,6 +1003,10 @@ function activeDocumentContent() {
   return collab.content || null;
 }
 
+function activeDocumentLabel() {
+  return activeDocumentContent()?.docType === 'invoice' ? 'Invoice' : 'Proposal';
+}
+
 function captureCurrentDocHtml() {
   const content = activeDocumentContent();
   const art = $('proposal');
@@ -1039,17 +1043,20 @@ function markWorkflowDirty() {
   documentRevision += 1;
   workflowDirty = true;
   updateSaveButton();
-  setAutosaveStatus('pending', 'Unsaved changes');
+  setAutosaveStatus('pending', `${activeDocumentLabel()} has unsaved changes`);
   scheduleAutosave();
 }
 
 function updateSaveButton() {
   const btn = $('saveDocBtn');
   if (!btn) return;
-  const canSave = !!activeDocumentContent() && !collab.isGuest;
+  const content = activeDocumentContent();
+  const canSave = !!content && !collab.isGuest;
+  const noun = content?.docType === 'invoice' ? 'invoice' : 'proposal';
   btn.hidden = !canSave;
-  btn.textContent = workflowDirty ? 'Save now' : 'Saved';
-  btn.title = workflowDirty ? 'Save changes now' : 'Changes autosave every 5 minutes';
+  btn.textContent = `Save ${noun}`;
+  btn.title = workflowDirty ? `Save ${noun} changes now` : `${activeDocumentLabel()} autosaves every 5 minutes; click to save now`;
+  btn.setAttribute('aria-label', `Save ${noun} now`);
 }
 
 function renderTemplateOptions() {
@@ -1451,7 +1458,7 @@ async function saveCurrentDocument({ toast = true, source = 'manual' } = {}) {
     if (error) {
       if (error === 'not-authenticated') showAuthModal();
       if (content === activeDocumentContent()) {
-        setAutosaveStatus('error', source === 'manual' ? 'Save failed — retrying' : 'Autosave failed — retrying');
+        setAutosaveStatus('error', source === 'manual' ? `${noun} save failed — retrying` : `${noun} autosave failed — retrying`);
         scheduleAutosave();
       }
       if (toast) showToast(error.message || String(error), 'error');
@@ -1464,9 +1471,9 @@ async function saveCurrentDocument({ toast = true, source = 'manual' } = {}) {
       if (revisionAtSave === documentRevision) {
         workflowDirty = false;
         clearAutosaveTimer();
-        setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+        setAutosaveStatus('saved', `${noun} saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
       } else {
-        setAutosaveStatus('pending', 'Unsaved changes');
+        setAutosaveStatus('pending', `${noun} has unsaved changes`);
         scheduleAutosave();
       }
       updateSaveButton();
@@ -1782,7 +1789,7 @@ async function generate() {
       if (!saveErr) {
         savedOk = true;
         setActiveDoc({ id: data && data[0] && data[0].id, content: proposal, token: null });
-        setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+        setAutosaveStatus('saved', `Proposal saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
         refreshHistory();
       } else if (saveErr !== 'not-authenticated' && saveErr !== 'offline') {
         console.warn('Could not save proposal to history:', saveErr);
@@ -2148,7 +2155,7 @@ async function generateInvoice() {
     if (!saveErr) {
       savedOk = true;
       setActiveDoc({ id: saved && saved[0] && saved[0].id, content: data, token: null });
-      setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+      setAutosaveStatus('saved', `Invoice saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
       refreshHistory();
     } else if (saveErr !== 'not-authenticated' && saveErr !== 'offline') {
       console.warn('Could not save invoice to history:', saveErr);
@@ -2157,8 +2164,8 @@ async function generateInvoice() {
   if (!savedOk) markWorkflowDirty();
 
   setStatus('ok', savedOk
-    ? 'Invoice generated and saved to your documents. Click any text to edit, then <b>Download PDF</b>.'
-    : 'Invoice generated! Click any text to edit, then <b>Download PDF</b>.');
+    ? 'Invoice generated and saved. Edits autosave every 5 minutes, or use <b>Save invoice</b> to save immediately.'
+    : 'Invoice generated. Edits autosave every 5 minutes, or use <b>Save invoice</b> to retry immediately.');
 }
 
 /* ---------- Rich text editor toolbar ---------- */
@@ -2711,7 +2718,7 @@ function setActiveDoc({ id, content, token }) {
   collab.isShared = !!token;
   workflowDirty = false;
   documentRevision = 0;
-  setAutosaveStatus('idle', collab.content ? 'Autosave every 5 min' : '');
+  setAutosaveStatus('idle', collab.content ? `${activeDocumentLabel()} autosaves every 5 min` : '');
   updateShareButton();
   hydrateInternalUi();
 }
@@ -2767,12 +2774,12 @@ async function persistDoc({ updateSaveState = true } = {}) {
       workflowDirty = false;
       clearAutosaveTimer();
       updateSaveButton();
-      setAutosaveStatus('saved', `Saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+      setAutosaveStatus('saved', `${activeDocumentLabel()} saved ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
     }
     return true;
   } catch {
     if (updateSaveState && content === activeDocumentContent() && workflowDirty) {
-      setAutosaveStatus('error', 'Autosave failed — retrying');
+      setAutosaveStatus('error', `${activeDocumentLabel()} autosave failed — retrying`);
       scheduleAutosave();
     }
     return false;
